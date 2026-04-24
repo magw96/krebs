@@ -48,19 +48,32 @@ mod_register_new_ui <- function(id) {
           shiny::fluidRow(
             shiny::column(6,
               shinyWidgets::pickerInput(ns("insurance"), "Cobertura médica",
-                choices = c("IMSS","ISSSTE","INSABI / Bienestar","Privado",
-                            "Gastos de bolsillo","Otro","Ninguna"),
+                choices = c("IMSS"               = "IMSS",
+                            "ISSSTE"             = "ISSSTE",
+                            "INSABI / Bienestar" = "INSABI",
+                            "Privado"            = "privado",
+                            "Gastos de bolsillo" = "bolsillo",
+                            "Otro"               = "otro",
+                            "Ninguna"            = "ninguna"),
                 selected = NULL, options = list(`live-search` = TRUE))),
             shiny::column(6,
               shinyWidgets::pickerInput(ns("estado_civil"), "Estado civil",
-                choices = c("Soltero","Casado","Unión libre","Divorciado","Viudo"),
+                choices = c("Soltero"     = "soltero",
+                            "Casado"      = "casado",
+                            "Unión libre" = "union_libre",
+                            "Divorciado"  = "divorciado",
+                            "Viudo"       = "viudo"),
                 selected = NULL))
           ),
           shiny::fluidRow(
             shiny::column(6,
               shinyWidgets::pickerInput(ns("escolaridad"), "Escolaridad",
-                choices = c("Ninguna","Primaria","Secundaria","Preparatoria",
-                            "Licenciatura","Posgrado"),
+                choices = c("Ninguna"      = "ninguna",
+                            "Primaria"     = "primaria",
+                            "Secundaria"   = "secundaria",
+                            "Preparatoria" = "preparatoria",
+                            "Licenciatura" = "licenciatura",
+                            "Posgrado"     = "posgrado"),
                 selected = NULL)),
             shiny::column(6,
               shiny::textInput(ns("ocupacion"), "Ocupación"))
@@ -87,8 +100,11 @@ mod_register_new_ui <- function(id) {
             size = "xs", justified = TRUE),
           shinyWidgets::radioGroupButtons(ns("physical_activity"),
             "Actividad física",
-            choices = c("Ninguna","Leve","Moderada","Vigorosa"),
-            selected = "Ninguna", size = "xs", justified = TRUE)
+            choices = c("Ninguna"  = "ninguna",
+                        "Leve"     = "leve",
+                        "Moderada" = "moderada",
+                        "Vigorosa" = "vigorosa"),
+            selected = "ninguna", size = "xs", justified = TRUE)
         ),
 
         bs4Dash::box(
