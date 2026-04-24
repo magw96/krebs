@@ -24,16 +24,31 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
     death       = "Defuncion"
   )
 
+  type_selector <- if (length(allowed_types) == 1L) {
+    shiny::tagList(
+      shiny::tags$div(
+        class = "alert alert-primary py-2 mb-2 text-center",
+        shiny::tags$strong(unname(type_labels[allowed_types]))
+      ),
+      shinyjs::hidden(
+        shiny::textInput(ns("encounter_type"), label = NULL,
+                         value = allowed_types[1])
+      )
+    )
+  } else {
+    shinyWidgets::radioGroupButtons(
+      ns("encounter_type"), label = NULL,
+      choices  = type_labels[allowed_types],
+      selected = allowed_types[1],
+      size     = "sm", justified = TRUE
+    )
+  }
+
   shiny::tagList(
     bs4Dash::box(
       title = shiny::tagList(shiny::icon("notes-medical"), " Tipo de evento"),
       width = 12, collapsible = FALSE, status = "primary", solidHeader = TRUE,
-      shinyWidgets::radioGroupButtons(
-        ns("encounter_type"), label = NULL,
-        choices  = type_labels[allowed_types],
-        selected = allowed_types[1],
-        size     = "sm", justified = TRUE
-      ),
+      type_selector,
       shiny::dateInput(ns("encounter_date"), "Fecha del evento",
                        value = Sys.Date(), max = Sys.Date(), language = "es")
     ),

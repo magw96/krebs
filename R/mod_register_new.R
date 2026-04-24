@@ -11,21 +11,21 @@ mod_register_new_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::tagList(
     shiny::h3(shiny::icon("user-plus"), " Registrar paciente nuevo"),
-    shiny::p("Capture el expediente, datos demograficos y el diagnostico inicial.",
+    shiny::p("Capture el expediente, datos demográficos y el diagnóstico inicial.",
              class = "text-muted"),
     shiny::fluidRow(
 
       # --- LEFT column: identidad + estilo de vida -----------------------
-      shiny::column(5,
+      shiny::column(6,
         bs4Dash::box(
           title = shiny::tagList(shiny::icon("id-card"), " Identidad"),
           width = 12, status = "primary", solidHeader = TRUE, collapsible = FALSE,
           shiny::textInput(ns("mrn"),
             shiny::HTML("MRN / Expediente <span style='color:red'>*</span>"),
-            placeholder = "solo numeros, ej. 3825369"),
+            placeholder = "Solo números, ej. 3825369"),
           shiny::textInput(ns("nombre"),
             shiny::HTML("Nombre completo <span style='color:red'>*</span>"),
-            placeholder = "Sin acentos"),
+            placeholder = "Apellidos y nombre"),
           shiny::textInput(ns("curp"), "CURP",
                            placeholder = "18 caracteres"),
           shiny::fluidRow(
@@ -39,31 +39,31 @@ mod_register_new_ui <- function(id) {
           ),
           shiny::fluidRow(
             shiny::column(6,
-              shiny::textInput(ns("telefono"), "Telefono", placeholder = "10 digitos")),
+              shiny::textInput(ns("telefono"), "Teléfono", placeholder = "10 dígitos")),
             shiny::column(6,
-              shiny::textInput(ns("email"), "Correo electronico"))
+              shiny::textInput(ns("email"), "Correo electrónico"))
           ),
           shiny::selectizeInput(ns("estado_n"),    "Estado de nacimiento",    choices = NULL),
           shiny::selectizeInput(ns("municipio_n"), "Municipio de nacimiento", choices = NULL),
           shiny::fluidRow(
             shiny::column(6,
-              shinyWidgets::pickerInput(ns("insurance"), "Cobertura medica",
-                choices = c("IMSS","ISSSTE","INSABI/Bienestar","Privado",
+              shinyWidgets::pickerInput(ns("insurance"), "Cobertura médica",
+                choices = c("IMSS","ISSSTE","INSABI / Bienestar","Privado",
                             "Gastos de bolsillo","Otro","Ninguna"),
                 selected = NULL, options = list(`live-search` = TRUE))),
             shiny::column(6,
               shinyWidgets::pickerInput(ns("estado_civil"), "Estado civil",
-                choices = c("soltero","casado","union libre","divorciado","viudo"),
+                choices = c("Soltero","Casado","Unión libre","Divorciado","Viudo"),
                 selected = NULL))
           ),
           shiny::fluidRow(
             shiny::column(6,
               shinyWidgets::pickerInput(ns("escolaridad"), "Escolaridad",
-                choices = c("ninguna","primaria","secundaria","preparatoria",
-                            "licenciatura","posgrado"),
+                choices = c("Ninguna","Primaria","Secundaria","Preparatoria",
+                            "Licenciatura","Posgrado"),
                 selected = NULL)),
             shiny::column(6,
-              shiny::textInput(ns("ocupacion"), "Ocupacion"))
+              shiny::textInput(ns("ocupacion"), "Ocupación"))
           ),
           shiny::div(style = "color:#c00", shiny::textOutput(ns("identity_err")))
         ),
@@ -79,33 +79,29 @@ mod_register_new_ui <- function(id) {
               shiny::numericInput(ns("estatura"), "Estatura (cm)",
                                   value = 170, min = 50, max = 240))
           ),
-          shinyWidgets::radioGroupButtons(ns("smoking"), "Tabaquismo (cig/dia)",
+          shinyWidgets::radioGroupButtons(ns("smoking"), "Tabaquismo (cigarrillos / día)",
             choices = c("No","1-10","10-20","20+"), selected = "No",
             size = "xs", justified = TRUE),
-          shinyWidgets::radioGroupButtons(ns("alcohol"), "Alcohol (bebidas/sem)",
+          shinyWidgets::radioGroupButtons(ns("alcohol"), "Alcohol (bebidas / semana)",
             choices = c("No","1-6","7-13","14+"), selected = "No",
             size = "xs", justified = TRUE),
           shinyWidgets::radioGroupButtons(ns("physical_activity"),
-            "Actividad fisica",
-            choices = c("ninguna","leve","moderada","vigorosa"),
-            selected = "ninguna", size = "xs", justified = TRUE),
-          shinyWidgets::radioGroupButtons(ns("drugs"),
-            "Uso de drogas recreativas",
-            choices = c("ninguna","ocasional","frecuente"),
-            selected = "ninguna", size = "xs", justified = TRUE)
+            "Actividad física",
+            choices = c("Ninguna","Leve","Moderada","Vigorosa"),
+            selected = "Ninguna", size = "xs", justified = TRUE)
         ),
 
         bs4Dash::box(
           title = shiny::tagList(shiny::icon("notes-medical"), " Comorbilidades"),
           width = 12, status = "primary", solidHeader = TRUE, collapsible = TRUE,
           shiny::selectizeInput(ns("comorbidities"),
-            "ICD-11 (multiples)", choices = NULL, multiple = TRUE,
-            options = list(placeholder = "diabetes, hipertension, ..."))
+            "ICD-11 (múltiples)", choices = NULL, multiple = TRUE,
+            options = list(placeholder = "Diabetes, hipertensión, ..."))
         )
       ),
 
       # --- RIGHT column: encounter form (initial_dx) ---------------------
-      shiny::column(7,
+      shiny::column(6,
         mod_encounter_form_ui(ns("enc"), allowed_types = "initial_dx")
       )
     ),
@@ -137,7 +133,6 @@ mod_register_new_server <- function(id, pool, user) {
         choices = lookup_municipios(), server = TRUE)
       icd <- tryCatch(lookup_icd11(), error = function(e) NULL)
       if (!is.null(icd)) {
-        # accept either a data.frame with a description column or a vector
         ch <- if (is.data.frame(icd)) {
           col <- intersect(c("Title","label","name","description"), names(icd))
           if (length(col)) icd[[col[1]]] else as.character(icd[[1]])
@@ -175,7 +170,7 @@ mod_register_new_server <- function(id, pool, user) {
 
       vals <- enc$values()
       if (is.null(vals)) {
-        err_rv("Revise los campos del diagnostico inicial."); return()
+        err_rv("Revise los campos del diagnóstico inicial."); return()
       }
       vals$mrn         <- input$mrn
       vals$hospital_id <- u$hospital_id
@@ -208,13 +203,12 @@ mod_register_new_server <- function(id, pool, user) {
           DBI::dbExecute(con,
             "INSERT INTO lifestyle
                (hospital_id, mrn, weight_kg, height_cm,
-                smoking, alcohol, physical_activity, drugs)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
+                smoking, alcohol, physical_activity)
+             VALUES ($1,$2,$3,$4,$5,$6,$7)",
             params = list(u$hospital_id, input$mrn,
                           input$peso, input$estatura,
                           input$smoking, input$alcohol,
-                          input$physical_activity %||% NA,
-                          input$drugs %||% NA))
+                          input$physical_activity %||% NA))
 
           # 3) comorbidities (multi)
           if (length(input$comorbidities)) {
@@ -267,11 +261,9 @@ insert_encounter <- function(con, user, vals) {
     "vital_status","death_date","death_cause",
     "notes","created_by"
   )
-  # fill any missing keys with NA so the param list is positional & complete
   for (k in cols) if (is.null(vals[[k]])) vals[[k]] <- NA
   vals <- vals[cols]
 
-  # arrays must go in as Postgres array literals
   vals$chemo_drugs   <- pg_text_array(vals$chemo_drugs)
   vals$surgery_cpt   <- pg_text_array(vals$surgery_cpt)
   vals$imaging_at_dx <- pg_text_array(vals$imaging_at_dx)
