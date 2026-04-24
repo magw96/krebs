@@ -1,0 +1,17 @@
+default:
+  golem_name: krebs
+  golem_version: 0.2.0
+  app_prod: no
+  log_level: INFO
+
+dev:
+  app_prod: no
+  log_level: DEBUG
+
+staging:
+  app_prod: yes
+  log_level: INFO
+
+production:
+  app_prod: yes
+  log_level: WARN

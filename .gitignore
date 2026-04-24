@@ -1,0 +1,44 @@
+# Secrets - NEVER commit
+.Renviron
+.Renviron.local
+_auth0.yml
+*.pem
+*.key
+
+# R session
+.Rhistory
+.RData
+.Rproj.user/
+.Ruserdata
+*.Rcheck/
+
+# rsconnect deploy artifacts
+rsconnect/
+
+# renv (keep renv.lock + activate.R, ignore the library)
+renv/library/
+renv/local/
+renv/lock/
+renv/python/
+renv/staging/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local backups of legacy V0.1 data (large)
+*.rds
+krebs17_backup_*/
+
+# IDE
+.vscode/
+.idea/
+.Renviron
+.secrets.R
+.Rproj.user/
+.Rhistory
+.RData
+renv/library/
+renv/local/
+renv/staging/
+rsconnect/

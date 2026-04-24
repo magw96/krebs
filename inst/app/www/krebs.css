@@ -1,0 +1,46 @@
+/* Krebs V0.2 - small CSS overrides on top of bs4Dash */
+
+/* Header brand */
+.brand-link img { height: 32px; }
+
+/* User chip in the header */
+.user-chip {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  color: #1f2a44;
+  margin-right: 14px;
+}
+.user-chip .fa-user-circle { color: #6f42c1; margin-right: 4px; }
+
+/* Required-field marker (used by Tab 1) */
+.mandatory_star { color: #c00; margin-left: 2px; }
+
+/* Selectize options - tighter line-height for long ICD lists */
+.selectize-dropdown-content > .option { line-height: 1.3; padding: 4px 8px; }
+
+/* Patient identity card in the followup tab */
+.bs4Dash dt { font-weight: 600; color: #555; }
+.bs4Dash dd { color: #1f2a44; }
+
+/* Vital-status badges */
+.badge.bg-success   { background:#28a745 !important; color:#fff; }
+.badge.bg-dark      { background:#1f2a44 !important; color:#fff; }
+.badge.bg-warning   { background:#ffc107 !important; color:#1f2a44; }
+.badge.bg-secondary { background:#6c757d !important; color:#fff; }
+
+/* Submit + reset buttons */
+.btn-success.btn-lg { padding: 10px 28px; font-weight: 600; }
+
+/* Login modal */
+.modal-content { border-radius: 8px; }
+
+/* Audit log table - smaller font for density */
+.dataTable td { font-size: 12.5px; }
+
+/* Responsive boxes */
+.card .card-header { background: #f7f8fb; border-bottom: 1px solid #e7eaf3; }
+
+/* Hide the bs4Dash brand on small screens */
+@media (max-width: 600px) {
+  .brand-link span { display: none; }
+}

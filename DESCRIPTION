@@ -1,0 +1,52 @@
+Package: krebs
+Title: Krebs - Multi-tenant Oncology Cancer Registry
+Version: 0.2.0
+Authors@R: person("Fabian A.", "Gutierrez Valle", email = "0201270@up.edu.mx", role = c("aut", "cre"))
+Description: Shiny application for multi-institution oncology cancer registries.
+    Implements WHO-aligned data capture (TNM, ICD-O-3, CPT), longitudinal
+    follow-up with recurrence tracking, role-based access control, and
+    interactive dashboards. Backed by PostgreSQL with row-level security
+    for multi-tenant isolation.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.3.1
+Imports:
+    bs4Dash (>= 2.3.0),
+    bslib (>= 0.6.0),
+    config (>= 0.3.2),
+    DBI (>= 1.2.0),
+    digest,
+    dplyr,
+    DT,
+    forcats,
+    ggplot2,
+    glue,
+    golem (>= 0.4.1),
+    htmltools,
+    htmlwidgets,
+    lubridate,
+    plotly,
+    pool (>= 1.0.0),
+    purrr,
+    RPostgres (>= 1.4.0),
+    scales,
+    shiny (>= 1.8.0),
+    shinycssloaders,
+    shinyjs,
+    shinymanager (>= 1.0.410),
+    shinyvalidate,
+    shinyWidgets,
+    survival,
+    survminer,
+    tibble,
+    tidyr,
+    timevis,
+    uuid
+Suggests:
+    aws.s3,
+    geojsonio,
+    mxmaps,
+    sf,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3

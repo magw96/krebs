@@ -1,0 +1,23 @@
+# Copy this file to ~/.Renviron (your HOME, not the project) and fill in.
+# NEVER commit your real .Renviron - it is in .gitignore.
+#
+# After filling in, deploy with:
+#   rsconnect::deployApp(envVars = c(
+#     "KREBS_DB_URL", "KREBS_ADMIN_BOOTSTRAP_PWD",
+#     "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_DEFAULT_REGION"
+#   ))
+
+# --- PostgreSQL connection (Supabase, RDS, Neon, local, ...) ---
+# Format: postgresql://USER:PASSWORD@HOST:PORT/DBNAME?sslmode=require
+KREBS_DB_URL=postgresql://postgres:CHANGEME@db.PROJECT.supabase.co:5432/postgres?sslmode=require
+
+# --- Bootstrap admin password (used only on first launch to seed admin user) ---
+KREBS_ADMIN_BOOTSTRAP_PWD=CHANGEME-strong-password-here
+
+# --- AWS S3 (only needed for the V0.1 -> V0.2 migration script and optional file uploads) ---
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_DEFAULT_REGION=us-east-2
+
+# --- Runtime config: dev | staging | production ---
+R_CONFIG_ACTIVE=dev
