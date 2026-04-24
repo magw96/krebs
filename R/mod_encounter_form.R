@@ -35,7 +35,7 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
       ns("encounter_type"), label = NULL,
       choices  = type_labels[allowed_types],
       selected = allowed_types[1],
-      size     = "sm", justified = TRUE
+      size     = "sm"
     )
   }
 
@@ -128,7 +128,7 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
             shiny::tags$label(class = "control-label", "Grado tumoral"),
             shinyWidgets::radioGroupButtons(ns("tumor_grade"), label = NULL,
               choices = c("G1","G2","G3","G4","GX"),
-              selected = character(0), size = "sm", justified = TRUE))
+              selected = character(0), size = "sm"))
         ),
         shiny::fluidRow(
           shiny::column(12,
@@ -136,7 +136,7 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
                               "ECOG performance status"),
             shinyWidgets::radioGroupButtons(ns("ecog_ps"), label = NULL,
               choices = c("0","1","2","3","4"),
-              selected = character(0), size = "sm", justified = TRUE))
+              selected = character(0), size = "sm"))
         ),
         shiny::fluidRow(
           shiny::column(6,
@@ -160,31 +160,31 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
             shiny::tags$label(class = "control-label", "T (tumor primario)"),
             shinyWidgets::radioGroupButtons(ns("tnm_t"), label = NULL,
               choices = c("TX","Tis","T1","T2","T3","T4"),
-              selected = character(0), size = "sm", justified = TRUE)),
+              selected = character(0), size = "sm")),
           shiny::column(4,
             shiny::tags$label(class = "control-label", "Base T"),
             shinyWidgets::radioGroupButtons(ns("tnm_t_basis"), label = NULL,
               choices = c("Clínico" = "clinico", "Patológico" = "patologico"),
-              selected = character(0), size = "sm", justified = TRUE))
+              selected = character(0), size = "sm"))
         ),
         shiny::fluidRow(
           shiny::column(8,
             shiny::tags$label(class = "control-label", "N (ganglios)"),
             shinyWidgets::radioGroupButtons(ns("tnm_n"), label = NULL,
               choices = c("NX","N0","N1","N2","N3"),
-              selected = character(0), size = "sm", justified = TRUE)),
+              selected = character(0), size = "sm")),
           shiny::column(4,
             shiny::tags$label(class = "control-label", "Base N"),
             shinyWidgets::radioGroupButtons(ns("tnm_n_basis"), label = NULL,
               choices = c("Clínico" = "clinico", "Patológico" = "patologico"),
-              selected = character(0), size = "sm", justified = TRUE))
+              selected = character(0), size = "sm"))
         ),
         shiny::fluidRow(
           shiny::column(8,
             shiny::tags$label(class = "control-label", "M (metástasis)"),
             shinyWidgets::radioGroupButtons(ns("tnm_m"), label = NULL,
               choices = c("MX","M0","M1"),
-              selected = character(0), size = "sm", justified = TRUE)),
+              selected = character(0), size = "sm")),
           shiny::column(4,
             shiny::tags$label(class = "control-label", "Resumen"),
             shiny::div(class = "form-control text-center",
@@ -193,15 +193,21 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
         )
       ),
 
+    # ---- Cancer-specific compartment (driven by OncoTree pick) ---------
+      shiny::uiOutput(ns("cancer_specific")),
+
     # ---- Biomarkers ----------------------------------------------------
       bs4Dash::box(
         title = shiny::tagList(shiny::icon("flask-vial"),
-                               " Biomarcadores y marcadores tumorales"),
+                               " Biomarcadores y marcadores tumorales (libres)"),
         width = 12, collapsible = TRUE, status = "primary", solidHeader = TRUE,
+        shiny::helpText("Para los marcadores específicos del tipo de cáncer ",
+                        "use el panel rojo de arriba. Aquí solo capture ",
+                        "biomarcadores adicionales no listados."),
         shiny::textAreaInput(ns("biomarkers_raw"),
           "Biomarcadores moleculares — uno por línea, formato \"clave: valor\"",
           rows = 3,
-          placeholder = "ER: positivo\nPR: negativo\nHER2: 2+\nKRAS: G12D"),
+          placeholder = "ATM: mutado\nTMB: 15 mut/Mb"),
         shiny::textAreaInput(ns("tumor_markers_raw"),
           "Marcadores tumorales séricos — uno por línea, valor numérico",
           rows = 2,
@@ -224,7 +230,7 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
               choices = c("Neoadyuvante" = "neoadyuvante",
                           "Adyuvante"    = "adyuvante",
                           "Paliativo"    = "paliativo"),
-              selected = character(0), size = "sm", justified = TRUE),
+              selected = character(0), size = "sm"),
             shiny::selectizeInput(ns("chemo_drugs"), "Medicamentos",
               choices = NULL, multiple = TRUE,
               options = list(placeholder = "Buscar fármacos…")),
@@ -339,7 +345,7 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
               choices = c("Vivo"    = "vivo",
                           "Muerto"  = "muerto",
                           "Perdido" = "perdido"),
-              selected = character(0), size = "sm", justified = TRUE)
+              selected = character(0), size = "sm")
           ),
           shiny::column(4,
             shiny::dateInput(ns("death_date"), "Fecha de defunción",
@@ -397,6 +403,12 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
       paste0(input$tnm_t %||% "?", input$tnm_n %||% "?", input$tnm_m %||% "?")
     })
 
+    # Cancer-specific compartment: react to the OncoTree pick.
+    cancer_cat <- shiny::reactive({ cancer_category(input$oncotree) })
+    output$cancer_specific <- shiny::renderUI({
+      cancer_specific_ui(ns, cancer_cat())
+    })
+
     iv <- make_encounter_validator(input, patient)
     iv$enable()
 
@@ -426,7 +438,9 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
 
         dx_method             = nz(input$dx_method),
         imaging_at_dx         = if (length(input$imaging_at_dx)) input$imaging_at_dx else NA,
-        biomarkers            = parse_kv_json(input$biomarkers_raw,    numeric_values = FALSE),
+        biomarkers            = merge_biomarkers_json(
+                                  input$biomarkers_raw,
+                                  cancer_specific_values(input, cancer_cat())),
         tumor_markers         = parse_kv_json(input$tumor_markers_raw, numeric_values = TRUE),
         family_history_cancer = isTRUE(input$family_history_cancer),
         family_history_detail = nz(input$family_history_detail),
@@ -479,6 +493,24 @@ nz       <- function(x) if (is.null(x) || !nzchar(as.character(x))) NA else x
 as_int   <- function(x) if (is.null(x) || is.na(suppressWarnings(as.integer(x)))) NA_integer_ else as.integer(x)
 as_num   <- function(x) if (is.null(x) || is.na(suppressWarnings(as.numeric(x)))) NA_real_   else as.numeric(x)
 as_date  <- function(x) if (is.null(x) || is.na(x)) NA         else as.Date(x)
+
+#' Merge free-text biomarkers with the cancer-specific structured list.
+#' Returns a JSON object string, or NA if both sources are empty.
+merge_biomarkers_json <- function(raw, cs_list = list()) {
+  base <- list()
+  if (!is.null(raw) && nzchar(raw)) {
+    lines <- strsplit(raw, "[\r\n]+")[[1]]
+    lines <- trimws(lines); lines <- lines[nzchar(lines)]
+    for (ln in lines) {
+      pair <- strsplit(ln, ":", fixed = TRUE)[[1]]
+      if (length(pair) < 2) next
+      base[[trimws(pair[1])]] <- trimws(paste(pair[-1], collapse = ":"))
+    }
+  }
+  merged <- utils::modifyList(base, cs_list %||% list())
+  if (!length(merged)) return(NA)
+  jsonlite::toJSON(merged, auto_unbox = TRUE)
+}
 
 #' Parse a "key: value\nkey: value" textarea into a JSON object string.
 #' Returns NA if input is empty.

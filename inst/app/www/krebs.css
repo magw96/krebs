@@ -44,3 +44,18 @@
 @media (max-width: 600px) {
   .brand-link span { display: none; }
 }
+
+/* shinyWidgets radioGroupButtons inside bs4Dash (BS4) — make the
+   button group span full row width without relying on the BS3-only
+   .btn-group-justified class (which broke clicks). */
+.btn-group { display: inline-flex; flex-wrap: wrap; }
+.btn-group > .btn { flex: 1 1 auto; }
+.shinyWidgets-container > .btn-group { width: 100%; }
+.shinyWidgets-container > .btn-group > .btn { flex: 1 1 0; }
+
+/* Cancer-specific compartment card */
+.cancer-specific-card {
+  border-left: 4px solid #bc3434;
+  background: #fff8f8;
+  margin-top: 0.5rem;
+}
