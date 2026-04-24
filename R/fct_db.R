@@ -15,16 +15,19 @@ db_pool <- function() {
     stop("KREBS_DB_URL is not set. Copy .Renviron.example to ~/.Renviron and fill it in.",
          call. = FALSE)
   }
+  u <- httr::parse_url(url)
   pool::dbPool(
-    drv      = RPostgres::Postgres(),
-    dbname   = NULL,
-    bigint   = "integer64",
-    minSize  = 1,
-    maxSize  = 8,
-    idleTimeout = 600 * 1000,
-    # RPostgres accepts a libpq connection string in `dbname=`:
-    bigint   = "integer64",
-    .connectionString = url
+    drv         = RPostgres::Postgres(),
+    host        = u$hostname,
+    port        = as.integer(u$port %||% 5432),
+    dbname      = sub("^/", "", u$path %||% "postgres"),
+    user        = u$username,
+    password    = utils::URLdecode(u$password %||% ""),
+    sslmode     = "require",
+    bigint      = "integer64",
+    minSize     = 1,
+    maxSize     = 8,
+    idleTimeout = 600 * 1000
   )
 }
 
