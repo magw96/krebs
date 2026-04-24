@@ -136,7 +136,7 @@ db_bootstrap <- function(pool) {
               "You will not be able to log in.", call. = FALSE)
       return(invisible(NULL))
     }
-    hash <- shinymanager::custom_hash(pwd)
+    hash <- scrypt::hashPassword(pwd)
     DBI::dbExecute(con,
       "INSERT INTO users(username, full_name, pwd_hash, role, hospital_id)
        VALUES ('admin','Bootstrap Admin', $1, 'super_admin', NULL)",

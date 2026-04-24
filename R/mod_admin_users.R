@@ -123,7 +123,7 @@ mod_admin_users_server <- function(id, pool, user) {
       }
       tryCatch({
         with_tenant(pool, u, function(con) {
-          hash <- shinymanager::custom_hash(input$u_pwd)
+          hash <- scrypt::hashPassword(input$u_pwd)
           DBI::dbExecute(con, "INSERT INTO users
             (username, full_name, pwd_hash, role, hospital_id)
             VALUES ($1,$2,$3,$4,$5)",

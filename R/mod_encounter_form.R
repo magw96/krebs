@@ -48,7 +48,7 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
         shiny::fluidRow(
           shiny::column(4,
             shiny::dateInput(ns("first_symptom_date"), "Fecha del primer sintoma",
-                             value = NA, max = Sys.Date(), language = "es")),
+                             value = NULL, max = Sys.Date(), language = "es")),
           shiny::column(4,
             shinyWidgets::pickerInput(ns("dx_method"), "Metodo diagnostico",
               choices = c("biopsia","citologia","imagen","clinico","quirurgico"),
@@ -231,9 +231,9 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
           ),
           shiny::column(6,
             shiny::dateInput(ns("surgery_date"), "Fecha de cirugia",
-                             value = NA, max = Sys.Date(), language = "es"),
+                             value = NULL, max = Sys.Date(), language = "es"),
             shiny::dateInput(ns("discharge_date"), "Fecha de alta",
-                             value = NA, max = Sys.Date(), language = "es"),
+                             value = NULL, max = Sys.Date(), language = "es"),
             shiny::fluidRow(
               shiny::column(6,
                 shiny::numericInput(ns("lymph_nodes_examined"),
@@ -262,7 +262,7 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
           ),
           shiny::column(4,
             shiny::dateInput(ns("death_date"), "Fecha de defuncion",
-                             value = NA, max = Sys.Date(), language = "es")
+                             value = NULL, max = Sys.Date(), language = "es")
           ),
           shiny::column(4,
             shiny::textInput(ns("death_cause"), "Causa")

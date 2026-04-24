@@ -47,7 +47,7 @@ mod_login_observers <- function(input, output, session, pool, on_success) {
     if (is.null(row) || nrow(row) == 0 || !isTRUE(row$is_active[1])) {
       err_rv("Usuario invalido o inactivo."); return()
     }
-    if (!isTRUE(shinymanager::custom_check(p, row$pwd_hash[1]))) {
+    if (!isTRUE(scrypt::verifyPassword(row$pwd_hash[1], p))) {
       err_rv("Contrasena incorrecta."); return()
     }
     user <- as.list(row[1, , drop = FALSE])
