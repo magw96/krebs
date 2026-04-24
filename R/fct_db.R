@@ -56,7 +56,11 @@ with_tenant <- function(pool, user, fn) {
 #' Read-only helper. Sets tenant context for the duration of one query.
 db_read <- function(pool, user, sql, params = list()) {
   with_tenant(pool, user, function(con) {
-    DBI::dbGetQuery(con, sql, params = params)
+    if (length(params) == 0L) {
+      DBI::dbGetQuery(con, sql)
+    } else {
+      DBI::dbGetQuery(con, sql, params = params)
+    }
   })
 }
 
