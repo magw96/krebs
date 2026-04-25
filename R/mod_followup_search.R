@@ -59,7 +59,7 @@ mod_followup_search_ui <- function(id) {
   )
 }
 
-mod_followup_search_server <- function(id, pool, user) {
+mod_followup_search_server <- function(id, pool, user, data_changed = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -188,12 +188,20 @@ mod_followup_search_server <- function(id, pool, user) {
         err_rv("")
         # Drop the autosaved draft and bump the user's recents cache.
         try(enc$on_submit_success(vals), silent = TRUE)
-        shiny::showNotification("Evento agregado.", type = "message", duration = 3)
+        if (!is.null(data_changed)) {
+          data_changed(shiny::isolate(data_changed()) + 1L)
+        }
+        shiny::showNotification(
+          sprintf("Evento agregado al expediente %s.", p$mrn),
+          type = "message", duration = 4)
         # force refresh of timeline & history
         shiny::updateSelectizeInput(session, "search", selected = p$mrn)
         enc$reset()
       }, error = function(e) {
-        err_rv(paste("Error:", conditionMessage(e)))
+        msg <- paste("Error:", conditionMessage(e))
+        message("[followup] ", msg)
+        err_rv(msg)
+        shiny::showNotification(msg, type = "error", duration = 8)
       })
     })
   })

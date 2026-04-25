@@ -1,7 +1,7 @@
 #' Tab 1: register a NEW patient + their initial diagnosis encounter.
 #'
 #' Two side-by-side panels:
-#'   - Left: identidad (PHI -> patient_identifiers)  + estilo de vida
+#'   - Left: identidad (PHI -> patient_identifiers)  + datos clinicos
 #'   - Right: encounter form (initial_dx only)       -> encounters
 #'
 #' Both inserts happen in a single transaction; if the encounter insert fails
@@ -19,7 +19,7 @@ mod_register_new_ui <- function(id) {
              class = "text-muted"),
     shiny::fluidRow(
 
-      # --- TOP row: identidad (8 cols) + estilo de vida (4 cols) ---------
+      # --- TOP row: identidad (8 cols) + datos clinicos (4 cols) --------
       shiny::column(8,
         bs4Dash::box(
           title = shiny::tagList(shiny::icon("id-card"), " Identidad"),
@@ -94,8 +94,16 @@ mod_register_new_ui <- function(id) {
 
       shiny::column(4,
         bs4Dash::box(
-          title = shiny::tagList(shiny::icon("heart"), " Estilo de vida"),
+          title = shiny::tagList(shiny::icon("heart-pulse"), " Datos clinicos"),
           width = 12, status = "primary", solidHeader = TRUE, collapsible = TRUE,
+          # Comorbilidades up top -- they're the highest-yield clinical
+          # info on this card, so the clinician sees them first.
+          shiny::tags$label(class = "control-label",
+            shiny::icon("notes-medical"), " Comorbilidades"),
+          shiny::selectizeInput(ns("comorbidities"),
+            "ICD-11 (multiples)", choices = NULL, multiple = TRUE,
+            options = list(placeholder = "Diabetes, hipertension, ...")),
+          shiny::hr(),
           shiny::fluidRow(
             shiny::column(6,
               shiny::numericInput(ns("peso"), "Peso (kg)",
@@ -118,21 +126,15 @@ mod_register_new_ui <- function(id) {
                         "Leve"     = "leve",
                         "Moderada" = "moderada",
                         "Vigorosa" = "vigorosa"),
-            selected = "ninguna", inline = TRUE)
+            selected = "ninguna", inline = TRUE),
+          shiny::helpText("ECOG performance status se captura en el ",
+                          shiny::tags$em("encuentro clinico"), " (debajo).")
         )
       ),
 
-      # --- BOTTOM row: encounter form (initial_dx) + comorbilidades ------
+      # --- BOTTOM row: encounter form (initial_dx) ----------------------
       shiny::column(12,
-        mod_encounter_form_ui(ns("enc"), allowed_types = "initial_dx"),
-        bs4Dash::box(
-          title = shiny::tagList(shiny::icon("notes-medical"), " Comorbilidades"),
-          width = 12, status = "primary", solidHeader = TRUE, collapsible = TRUE,
-          collapsed = TRUE,
-          shiny::selectizeInput(ns("comorbidities"),
-            "ICD-11 (multiples)", choices = NULL, multiple = TRUE,
-            options = list(placeholder = "Diabetes, hipertension, ..."))
-        )
+        mod_encounter_form_ui(ns("enc"), allowed_types = "initial_dx")
       )
     ),
 
@@ -154,7 +156,7 @@ mod_register_new_ui <- function(id) {
   )
 }
 
-mod_register_new_server <- function(id, pool, user) {
+mod_register_new_server <- function(id, pool, user, data_changed = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -215,6 +217,17 @@ mod_register_new_server <- function(id, pool, user) {
       vals$mrn         <- input$mrn
       vals$hospital_id <- u$hospital_id
 
+      # Hard precondition: every multi-tenant insert needs a hospital_id.
+      # Super-admins may have hospital_id = NULL, in which case we can't
+      # write rows owned by no tenant -- ask them to switch hospital first.
+      if (is.null(u$hospital_id) || is.na(u$hospital_id)) {
+        err_rv("Su usuario no tiene hospital asignado. Pida al administrador asignarle un hospital antes de registrar pacientes.")
+        return()
+      }
+
+      message(sprintf("[register] inserting mrn=%s hospital_id=%s user=%s",
+                      input$mrn, u$hospital_id, u$user_id))
+
       tryCatch({
         with_tenant(pool, u, function(con) {
           # 1) patient identifier (PHI)
@@ -265,10 +278,20 @@ mod_register_new_server <- function(id, pool, user) {
         })
         # Drop the autosaved draft and bump the user's recents cache.
         try(enc$on_submit_success(vals), silent = TRUE)
+        # Bump the cross-module trigger so dashboard + data tabs refresh.
+        if (!is.null(data_changed)) {
+          data_changed(shiny::isolate(data_changed()) + 1L)
+        }
+        shiny::showNotification(
+          paste0("Paciente ", input$mrn, " guardado en la base de datos."),
+          type = "message", duration = 4)
         shinyjs::hide("submit"); shinyjs::show("ok_msg")
       },
       error = function(e) {
-        err_rv(paste("Error al guardar:", conditionMessage(e)))
+        msg <- paste("Error al guardar:", conditionMessage(e))
+        message("[register] ", msg)
+        err_rv(msg)
+        shiny::showNotification(msg, type = "error", duration = 8)
       })
     })
 

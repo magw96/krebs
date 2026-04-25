@@ -48,9 +48,17 @@ app_server <- function(input, output, session) {
   # --- Mount modules (each gets pool + reactive user) -----------------------
   current_user <- shiny::reactive(user_rv())
 
-  mod_register_new_server   ("register", pool = pool, user = current_user)
-  mod_followup_search_server("followup", pool = pool, user = current_user)
+  # Shared invalidation tick: bumped by register/followup after a successful
+  # insert; observed by dashboard + data tabs so they refresh immediately
+  # instead of showing stale cached results.
+  data_changed <- shiny::reactiveVal(0L)
+
+  mod_register_new_server   ("register", pool = pool, user = current_user,
+                             data_changed = data_changed)
+  mod_followup_search_server("followup", pool = pool, user = current_user,
+                             data_changed = data_changed)
   mod_dashboard_server      ("dash",     pool = pool, user = current_user)
-  mod_admin_data_server     ("data",     pool = pool, user = current_user)
+  mod_admin_data_server     ("data",     pool = pool, user = current_user,
+                             data_changed = data_changed)
   mod_admin_users_server    ("admin",    pool = pool, user = current_user)
 }

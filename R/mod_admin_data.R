@@ -13,13 +13,18 @@ mod_admin_data_ui <- function(id) {
     bs4Dash::box(width = 12, status = "primary", solidHeader = TRUE,
                  title = shiny::tagList(shiny::icon("download"), " Exportar"),
       shiny::fluidRow(
-        shiny::column(4, shinyWidgets::radioGroupButtons(ns("scope"), "Vista",
+        shiny::column(3, shinyWidgets::radioGroupButtons(ns("scope"), "Vista",
           choices = c("Encuentros con identidad" = "full",
                       "De-identificada"           = "deid"),
           selected = "deid", justified = TRUE, size = "sm")),
-        shiny::column(4, shiny::downloadButton(ns("dl_csv"),  "CSV",   class = "btn-success")),
-        shiny::column(4, shiny::downloadButton(ns("dl_xlsx"), "Excel", class = "btn-success"))
-      )
+        shiny::column(3, shiny::actionButton(ns("refresh"),
+          shiny::tagList(shiny::icon("rotate"), " Refrescar"),
+          class = "btn-outline-primary")),
+        shiny::column(3, shiny::downloadButton(ns("dl_csv"),  "CSV",   class = "btn-success")),
+        shiny::column(3, shiny::downloadButton(ns("dl_xlsx"), "Excel", class = "btn-success"))
+      ),
+      shiny::div(class = "text-muted small",
+        shiny::textOutput(ns("row_count"), inline = TRUE))
     ),
 
     bs4Dash::box(width = 12, status = "info", solidHeader = TRUE,
@@ -29,10 +34,14 @@ mod_admin_data_ui <- function(id) {
   )
 }
 
-mod_admin_data_server <- function(id, pool, user) {
+mod_admin_data_server <- function(id, pool, user, data_changed = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
 
     tbl <- shiny::reactive({
+      # Take a dependency on the cross-module trigger (bumped on every
+      # successful insert) and the local manual-refresh button.
+      if (!is.null(data_changed)) data_changed()
+      input$refresh
       u <- user(); if (is.null(u)) return(NULL)
       can_full <- u$role %in% c("clinician","admin","super_admin")
       scope    <- input$scope %||% "deid"
@@ -46,6 +55,13 @@ mod_admin_data_server <- function(id, pool, user) {
             JOIN encounters e USING (hospital_id, mrn)
             ORDER BY e.encounter_date DESC LIMIT 1000")
       }
+    })
+
+    output$row_count <- shiny::renderText({
+      d <- tbl()
+      if (is.null(d)) return("Inicie sesion para ver datos.")
+      sprintf("Mostrando %d registros (max 1000). Ultima actualizacion: %s",
+              nrow(d), format(Sys.time(), "%H:%M:%S"))
     })
 
     output$tbl <- DT::renderDT({
