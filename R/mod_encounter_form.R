@@ -59,7 +59,7 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
       bs4Dash::box(
         title = shiny::tagList(shiny::icon("magnifying-glass-chart"),
                                " Contexto del diagnostico"),
-        width = 12, collapsible = TRUE, status = "primary", solidHeader = TRUE,
+        width = 12, collapsible = TRUE, collapsed = TRUE, status = "primary", solidHeader = TRUE,
         shiny::fluidRow(
           shiny::column(4,
             shiny::dateInput(ns("first_symptom_date"),
@@ -121,7 +121,7 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
       bs4Dash::box(
         title = shiny::tagList(shiny::icon("dna"),
                                " Caracterizacion del tumor"),
-        width = 12, collapsible = TRUE, status = "primary", solidHeader = TRUE,
+        width = 12, collapsible = TRUE, collapsed = TRUE, status = "primary", solidHeader = TRUE,
         shiny::selectizeInput(ns("primary_site"),
                               "Localizacion anatomica (ICD-O-3)",
                               choices = NULL,
@@ -160,7 +160,7 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
       bs4Dash::box(
         title = shiny::tagList(shiny::icon("layer-group"),
                                " Clasificacion TNM"),
-        width = 12, collapsible = TRUE, status = "primary", solidHeader = TRUE,
+        width = 12, collapsible = TRUE, collapsed = TRUE, status = "primary", solidHeader = TRUE,
         shiny::fluidRow(
           shiny::column(8,
             shiny::radioButtons(ns("tnm_t"), "T (tumor primario)",
@@ -203,7 +203,7 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
       bs4Dash::box(
         title = shiny::tagList(shiny::icon("flask-vial"),
                                " Biomarcadores libres"),
-        width = 12, collapsible = TRUE, status = "primary", solidHeader = TRUE,
+        width = 12, collapsible = TRUE, collapsed = TRUE, status = "primary", solidHeader = TRUE,
         shiny::helpText("Para los marcadores especificos del tipo de ",
                         "cancer use el panel rojo de arriba. Aqui ",
                         "solo capture biomarcadores adicionales no listados."),
@@ -225,7 +225,7 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
       bs4Dash::box(
         title = shiny::tagList(shiny::icon("syringe"),
                                " Tratamiento sistemico"),
-        width = 12, collapsible = TRUE, status = "primary", solidHeader = TRUE,
+        width = 12, collapsible = TRUE, collapsed = TRUE, status = "primary", solidHeader = TRUE,
         shinyWidgets::awesomeCheckbox(ns("chemo"), "Quimioterapia", FALSE),
         shiny::conditionalPanel(
           condition = sprintf("input['%s']", ns("chemo")),
@@ -319,7 +319,7 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
     # ---- Surgery -------------------------------------------------------
       bs4Dash::box(
         title = shiny::tagList(shiny::icon("hospital"), " Cirugia"),
-        width = 12, collapsible = TRUE, status = "primary", solidHeader = TRUE,
+        width = 12, collapsible = TRUE, collapsed = TRUE, status = "primary", solidHeader = TRUE,
         shiny::selectizeInput(ns("surgery_cpt"), "Procedimiento (CPT)",
                               choices = NULL, multiple = TRUE,
                               options = list(placeholder = "Buscar procedimiento...")),
@@ -391,7 +391,7 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
 
     bs4Dash::box(
       title = shiny::tagList(shiny::icon("note-sticky"), " Notas"),
-      width = 12, collapsible = TRUE, status = "secondary", solidHeader = TRUE,
+      width = 12, collapsible = TRUE, collapsed = TRUE, status = "secondary", solidHeader = TRUE,
       shiny::textAreaInput(ns("notes"), NULL, rows = 3,
                            placeholder = "Observaciones libres")
     )
@@ -564,9 +564,13 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
     iv <- make_encounter_validator(input, patient)
     iv$enable()
 
-    # Build the row to insert. Returns NULL if invalid.
+    # Build the row to insert. Hard requirement: encounter_date. Other rules
+    # (death/discharge dates, chemo intent) surface as red text via the
+    # validator's UI feedback but do not block submission -- the DB and
+    # validate_new_patient() catch real problems.
     values <- shiny::reactive({
-      if (!iv$is_valid()) return(NULL)
+      if (is.null(input$encounter_date) || is.na(input$encounter_date) ||
+          !nzchar(as.character(input$encounter_date))) return(NULL)
       u <- if (is.function(user)) user() else user
       p <- if (is.function(patient)) patient() else patient
       list(
