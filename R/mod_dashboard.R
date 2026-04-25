@@ -160,7 +160,7 @@ mod_dashboard_server <- function(id, pool, user) {
           N        = length(x),
           Mediana  = round(median(x), 2),
           IQR      = sprintf("%.1f - %.1f", quantile(x, 0.25), quantile(x, 0.75)),
-          Normal   = ifelse(is.na(norm_p), "\u2014", ifelse(norm_p > 0.05, "si", "no"))
+          Normal   = ifelse(is.na(norm_p), "--", ifelse(norm_p > 0.05, "si", "no"))
         )
       }))
     }, striped = TRUE, hover = TRUE, bordered = TRUE)

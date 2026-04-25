@@ -114,11 +114,11 @@ lookup_bilateral <- function() {
 .mx_state_fallback <- function() {
   sort(c("Aguascalientes","Baja California","Baja California Sur","Campeche",
          "Chiapas","Chihuahua",
-         "Ciudad de M\u00e9xico","Coahuila","Colima","Durango",
-         "Estado de M\u00e9xico","Guanajuato","Guerrero","Hidalgo","Jalisco",
-         "Michoac\u00e1n","Morelos","Nayarit","Nuevo Le\u00f3n","Oaxaca","Puebla",
-         "Quer\u00e9taro","Quintana Roo","San Luis Potos\u00ed","Sinaloa","Sonora",
-         "Tabasco","Tamaulipas","Tlaxcala","Veracruz","Yucat\u00e1n","Zacatecas"))
+         "Ciudad de Mexico","Coahuila","Colima","Durango",
+         "Estado de Mexico","Guanajuato","Guerrero","Hidalgo","Jalisco",
+         "Michoacan","Morelos","Nayarit","Nuevo Leon","Oaxaca","Puebla",
+         "Queretaro","Quintana Roo","San Luis Potosi","Sinaloa","Sonora",
+         "Tabasco","Tamaulipas","Tlaxcala","Veracruz","Yucatan","Zacatecas"))
 }
 
 .mx_load_csv <- function() {

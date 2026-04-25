@@ -14,8 +14,8 @@ mod_register_new_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::tagList(
     shiny::h3(shiny::icon("user-plus"), " Registrar paciente nuevo"),
-    shiny::p("Capture el expediente, datos demogr\u00e1ficos y el ",
-             "diagn\u00f3stico inicial.",
+    shiny::p("Capture el expediente, datos demograficos y el ",
+             "diagnostico inicial.",
              class = "text-muted"),
     shiny::fluidRow(
 
@@ -26,7 +26,7 @@ mod_register_new_ui <- function(id) {
           width = 12, status = "primary", solidHeader = TRUE, collapsible = FALSE,
           shiny::textInput(ns("mrn"),
             shiny::HTML("MRN / Expediente <span style='color:red'>*</span>"),
-            placeholder = "Solo n\u00fameros, ej. 3825369"),
+            placeholder = "Solo numeros, ej. 3825369"),
           shiny::textInput(ns("nombre"),
             shiny::HTML("Nombre completo <span style='color:red'>*</span>"),
             placeholder = "Apellidos y nombre"),
@@ -44,10 +44,10 @@ mod_register_new_ui <- function(id) {
           ),
           shiny::fluidRow(
             shiny::column(6,
-              shiny::textInput(ns("telefono"), "Tel\u00e9fono",
-                               placeholder = "10 d\u00edgitos")),
+              shiny::textInput(ns("telefono"), "Telefono",
+                               placeholder = "10 digitos")),
             shiny::column(6,
-              shiny::textInput(ns("email"), "Correo electr\u00f3nico"))
+              shiny::textInput(ns("email"), "Correo electronico"))
           ),
           shiny::selectizeInput(ns("estado_n"),    "Estado de nacimiento",
             choices = c("" = "", lookup_states())),
@@ -57,7 +57,7 @@ mod_register_new_ui <- function(id) {
           shiny::fluidRow(
             shiny::column(6,
               shinyWidgets::pickerInput(ns("insurance"),
-                "Cobertura m\u00e9dica",
+                "Cobertura medica",
                 choices = c("IMSS"               = "IMSS",
                             "ISSSTE"             = "ISSSTE",
                             "INSABI / Bienestar" = "INSABI",
@@ -70,7 +70,7 @@ mod_register_new_ui <- function(id) {
               shinyWidgets::pickerInput(ns("estado_civil"), "Estado civil",
                 choices = c("Soltero"            = "soltero",
                             "Casado"             = "casado",
-                            "Uni\u00f3n libre"   = "union_libre",
+                            "Union libre"   = "union_libre",
                             "Divorciado"         = "divorciado",
                             "Viudo"              = "viudo"),
                 selected = NULL))
@@ -86,7 +86,7 @@ mod_register_new_ui <- function(id) {
                             "Posgrado"     = "posgrado"),
                 selected = NULL)),
             shiny::column(6,
-              shiny::textInput(ns("ocupacion"), "Ocupaci\u00f3n"))
+              shiny::textInput(ns("ocupacion"), "Ocupacion"))
           ),
           shiny::div(style = "color:#c00", shiny::textOutput(ns("identity_err")))
         ),
@@ -103,7 +103,7 @@ mod_register_new_ui <- function(id) {
                                   value = 170, min = 50, max = 240))
           ),
           shiny::radioButtons(ns("smoking"),
-            "Tabaquismo (cigarrillos / d\u00eda)",
+            "Tabaquismo (cigarrillos / dia)",
             choices = c("No","1-10","10-20","20+"), selected = "No",
             inline = TRUE),
           shiny::radioButtons(ns("alcohol"),
@@ -111,7 +111,7 @@ mod_register_new_ui <- function(id) {
             choices = c("No","1-6","7-13","14+"), selected = "No",
             inline = TRUE),
           shiny::radioButtons(ns("physical_activity"),
-            "Actividad f\u00edsica",
+            "Actividad fisica",
             choices = c("Ninguna"  = "ninguna",
                         "Leve"     = "leve",
                         "Moderada" = "moderada",
@@ -123,8 +123,8 @@ mod_register_new_ui <- function(id) {
           title = shiny::tagList(shiny::icon("notes-medical"), " Comorbilidades"),
           width = 12, status = "primary", solidHeader = TRUE, collapsible = TRUE,
           shiny::selectizeInput(ns("comorbidities"),
-            "ICD-11 (m\u00faltiples)", choices = NULL, multiple = TRUE,
-            options = list(placeholder = "Diabetes, hipertensi\u00f3n, ..."))
+            "ICD-11 (multiples)", choices = NULL, multiple = TRUE,
+            options = list(placeholder = "Diabetes, hipertension, ..."))
         )
       ),
 
@@ -205,7 +205,7 @@ mod_register_new_server <- function(id, pool, user) {
 
       vals <- enc$values()
       if (is.null(vals)) {
-        err_rv("Revise los campos del diagn\u00f3stico inicial."); return()
+        err_rv("Revise los campos del diagnostico inicial."); return()
       }
       vals$mrn         <- input$mrn
       vals$hospital_id <- u$hospital_id

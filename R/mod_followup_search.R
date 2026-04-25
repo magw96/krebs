@@ -109,9 +109,9 @@ mod_followup_search_server <- function(id, pool, user) {
           shiny::tags$dt(class = "col-5", "Edad"),        shiny::tags$dd(class = "col-7",
                                                             sprintf("%d", p$edad)),
           shiny::tags$dt(class = "col-5", "Fecha dx"),    shiny::tags$dd(class = "col-7",
-                                                            as.character(p$fecha_dx %||% "\u2014")),
+                                                            as.character(p$fecha_dx %||% "--")),
           shiny::tags$dt(class = "col-5", "Tipo cancer"), shiny::tags$dd(class = "col-7",
-                                                            p$tipo_cancer %||% "\u2014"),
+                                                            p$tipo_cancer %||% "--"),
           shiny::tags$dt(class = "col-5", "Estado vital"),shiny::tags$dd(class = "col-7",
             shiny::tags$span(class = vital_class(p$vital_status),
                              p$vital_status %||% "desconocido")),
@@ -213,7 +213,7 @@ search_patients <- function(pool, user, q) {
      LIMIT 25
   ", params = list(q_low, q)) -> rows
   if (nrow(rows) == 0) return(data.frame(mrn=character(0), display=character(0)))
-  rows$display <- sprintf("%s \u2014 %s (%s, %s)",
+  rows$display <- sprintf("%s -- %s (%s, %s)",
                           rows$mrn, rows$nombre, rows$dob, rows$sexo)
   rows[, c("mrn","display")]
 }

@@ -4,7 +4,7 @@
 #' (breast, colorectal, NSCLC, prostate, ...) and reveal only the
 #' biomarker / staging fields that make clinical sense for that
 #' neoplasm. All extra inputs are merged into the existing
-#' `biomarkers` JSONB column at submit time \u2014 no schema change.
+#' `biomarkers` JSONB column at submit time -- no schema change.
 #'
 #' Adding a new category:
 #'   1. extend `cancer_category()` with a regex match.
@@ -16,7 +16,7 @@
 # ---------------------------------------------------------------------------
 
 #' Map an OncoTree string to an internal category id.
-#' @param oncotree character(1) \u2014 e.g. "Invasive Breast Carcinoma (BRCA)"
+#' @param oncotree character(1) -- e.g. "Invasive Breast Carcinoma (BRCA)"
 #' @return character(1) | NA
 cancer_category <- function(oncotree) {
   if (is.null(oncotree) || !nzchar(oncotree)) return(NA_character_)
@@ -65,38 +65,38 @@ cancer_category <- function(oncotree) {
 #' Pretty-print the category for the UI header.
 cancer_category_label <- function(cat) {
   switch(cat %||% "",
-    breast          = "C\u00e1ncer de mama",
-    colorectal      = "C\u00e1ncer colorrectal",
-    lung_nsclc      = "C\u00e1ncer de pulm\u00f3n (NSCLC)",
-    lung_sclc       = "C\u00e1ncer de pulm\u00f3n (SCLC)",
-    prostate        = "C\u00e1ncer de pr\u00f3stata",
-    gyn_cervical    = "C\u00e1ncer cervicouterino",
-    gyn_ovarian     = "C\u00e1ncer de ovario",
-    gyn_endometrial = "C\u00e1ncer de endometrio",
-    thyroid         = "C\u00e1ncer de tiroides",
+    breast          = "Cancer de mama",
+    colorectal      = "Cancer colorrectal",
+    lung_nsclc      = "Cancer de pulmon (NSCLC)",
+    lung_sclc       = "Cancer de pulmon (SCLC)",
+    prostate        = "Cancer de prostata",
+    gyn_cervical    = "Cancer cervicouterino",
+    gyn_ovarian     = "Cancer de ovario",
+    gyn_endometrial = "Cancer de endometrio",
+    thyroid         = "Cancer de tiroides",
     melanoma        = "Melanoma",
     lymphoma        = "Linfoma",
     sarcoma         = "Sarcoma / GIST",
-    gastric         = "C\u00e1ncer g\u00e1strico",
+    gastric         = "Cancer gastrico",
     hcc             = "Hepatocarcinoma",
-    pancreas        = "C\u00e1ncer de p\u00e1ncreas",
+    pancreas        = "Cancer de pancreas",
     head_neck       = "Cabeza y cuello",
-    renal           = "C\u00e1ncer renal",
-    bladder         = "C\u00e1ncer de vejiga",
+    renal           = "Cancer renal",
+    bladder         = "Cancer de vejiga",
     cns_glioma      = "Tumor del SNC",
     leukemia        = "Leucemia",
     myeloma         = "Mieloma",
-    appendix        = "C\u00e1ncer de ap\u00e9ndice",
-    anal            = "C\u00e1ncer anal",
-    vulvar          = "C\u00e1ncer de vulva",
-    penile          = "C\u00e1ncer de pene",
-    testis          = "C\u00e1ncer de test\u00edculo",
-    esophagus       = "C\u00e1ncer de es\u00f3fago / GEJ",
-    ampullary       = "C\u00e1ncer ampular",
-    biliary         = "V\u00edas biliares / ves\u00edcula",
-    salivary        = "Gl\u00e1ndulas salivales",
+    appendix        = "Cancer de apendice",
+    anal            = "Cancer anal",
+    vulvar          = "Cancer de vulva",
+    penile          = "Cancer de pene",
+    testis          = "Cancer de testiculo",
+    esophagus       = "Cancer de esofago / GEJ",
+    ampullary       = "Cancer ampular",
+    biliary         = "Vias biliares / vesicula",
+    salivary        = "Glandulas salivales",
     mesothelioma    = "Mesotelioma",
-    thymoma         = "Timoma / carcinoma t\u00edmico",
+    thymoma         = "Timoma / carcinoma timico",
     net             = "Tumor neuroendocrino (NET / NEC)",
     cup             = "Carcinoma de origen primario desconocido (CUP)",
     other           = "Marcadores generales",
@@ -109,7 +109,7 @@ cancer_category_label <- function(cat) {
 
 #' Build the cancer-specific UI block.
 #' @param ns shiny namespace function from the parent module
-#' @param category character(1) \u2014 output of cancer_category()
+#' @param category character(1) -- output of cancer_category()
 cancer_specific_ui <- function(ns, category) {
   if (is.na(category) || !nzchar(category)) return(NULL)
   body <- switch(category,
@@ -174,7 +174,7 @@ cancer_specific_ui <- function(ns, category) {
           "Tabaquismo",
           choices = c("","Nunca","Ex-fumador","Activo"))),
         shiny::column(4, shiny::numericInput(ns("cs_pack_years"),
-          "Paquetes-a\u00f1o", value = NA, min = 0))
+          "Paquetes-ano", value = NA, min = 0))
       )
     ),
 
@@ -183,7 +183,7 @@ cancer_specific_ui <- function(ns, category) {
         "Etapa (VALG)",
         choices = c("","Limitada","Extendida"))),
       shiny::column(6, shiny::numericInput(ns("cs_pack_years"),
-        "Paquetes-a\u00f1o", value = NA, min = 0))
+        "Paquetes-ano", value = NA, min = 0))
     ),
 
     prostate = shiny::tagList(
@@ -191,9 +191,9 @@ cancer_specific_ui <- function(ns, category) {
         shiny::column(3, shiny::numericInput(ns("cs_psa"),
           "PSA (ng/mL)", value = NA, min = 0, step = 0.01)),
         shiny::column(3, shiny::numericInput(ns("cs_gleason_a"),
-          "Gleason 1\u00b0", value = NA, min = 1, max = 5)),
+          "Gleason 1 deg", value = NA, min = 1, max = 5)),
         shiny::column(3, shiny::numericInput(ns("cs_gleason_b"),
-          "Gleason 2\u00b0", value = NA, min = 1, max = 5)),
+          "Gleason 2 deg", value = NA, min = 1, max = 5)),
         shiny::column(3, shinyWidgets::pickerInput(ns("cs_isup"),
           "ISUP grupo",
           choices = c("","1","2","3","4","5")))
@@ -203,7 +203,7 @@ cancer_specific_ui <- function(ns, category) {
           "Riesgo D'Amico",
           choices = c("","Bajo","Intermedio","Alto"))),
         shiny::column(6, shinyWidgets::awesomeCheckbox(ns("cs_castrate"),
-          "Resistente a castraci\u00f3n (CRPC)", FALSE))
+          "Resistente a castracion (CRPC)", FALSE))
       )
     ),
 
@@ -242,14 +242,14 @@ cancer_specific_ui <- function(ns, category) {
         "Subtipo molecular",
         choices = c("","POLE-mutado","MSI-H","p53-abn","NSMP / sin perfil"))),
       shiny::column(4, shinyWidgets::pickerInput(ns("cs_em_histo"),
-        "Histolog\u00eda",
-        choices = c("","Endometrioide","Seroso","C\u00e9lulas claras","Carcinosarcoma")))
+        "Histologia",
+        choices = c("","Endometrioide","Seroso","Celulas claras","Carcinosarcoma")))
     ),
 
     thyroid = shiny::fluidRow(
       shiny::column(4, shinyWidgets::pickerInput(ns("cs_thy_histo"),
-        "Histolog\u00eda",
-        choices = c("","Papilar","Folicular","Medular","Anapl\u00e1sico"))),
+        "Histologia",
+        choices = c("","Papilar","Folicular","Medular","Anaplasico"))),
       shiny::column(4, shinyWidgets::pickerInput(ns("cs_braf_thy"), "BRAF V600E",
         choices = c("","positivo","negativo","desconocido"))),
       shiny::column(4, shiny::numericInput(ns("cs_tg"),
@@ -263,7 +263,7 @@ cancer_specific_ui <- function(ns, category) {
         "Nivel de Clark",
         choices = c("","I","II","III","IV","V"))),
       shiny::column(3, shinyWidgets::awesomeCheckbox(ns("cs_ulcer"),
-        "Ulceraci\u00f3n", FALSE)),
+        "Ulceracion", FALSE)),
       shiny::column(3, shinyWidgets::pickerInput(ns("cs_braf_mel"),
         "BRAF",
         choices = c("","V600E","V600K","wildtype","desconocido")))
@@ -275,8 +275,8 @@ cancer_specific_ui <- function(ns, category) {
           "Ann Arbor",
           choices = c("","I","II","III","IV"))),
         shiny::column(4, shinyWidgets::pickerInput(ns("cs_b_symp"),
-          "S\u00edntomas B",
-          choices = c("","S\u00ed","No"))),
+          "Sintomas B",
+          choices = c("","Si","No"))),
         shiny::column(4, shinyWidgets::pickerInput(ns("cs_ipi"),
           "IPI / FLIPI",
           choices = c("","Bajo","Intermedio-bajo","Intermedio-alto","Alto")))
@@ -286,7 +286,7 @@ cancer_specific_ui <- function(ns, category) {
           "LDH (U/L)", value = NA, min = 0)),
         shiny::column(6, shinyWidgets::pickerInput(ns("cs_cell_origin"),
           "Origen celular",
-          choices = c("","B-cell","T-cell","NK","Hodgkin cl\u00e1sico",
+          choices = c("","B-cell","T-cell","NK","Hodgkin clasico",
                       "Hodgkin nodular")))
       )
     ),
@@ -296,9 +296,9 @@ cancer_specific_ui <- function(ns, category) {
         "FNCLCC",
         choices = c("","G1","G2","G3"))),
       shiny::column(4, shiny::numericInput(ns("cs_size_cm"),
-        "Tama\u00f1o tumoral (cm)", value = NA, min = 0, step = 0.1)),
+        "Tamano tumoral (cm)", value = NA, min = 0, step = 0.1)),
       shiny::column(4, shinyWidgets::pickerInput(ns("cs_kit"), "KIT / PDGFRA",
-        choices = c("","KIT ex\u00f3n 11","KIT ex\u00f3n 9","PDGFRA","wildtype",
+        choices = c("","KIT exon 11","KIT exon 9","PDGFRA","wildtype",
                     "no aplica")))
     ),
 
@@ -312,7 +312,7 @@ cancer_specific_ui <- function(ns, category) {
         choices = c("","MSS","MSI-H","desconocido"))),
       shiny::column(3, shinyWidgets::pickerInput(ns("cs_pdl1_ga"),
         "PD-L1 CPS",
-        choices = c("","<1","1-4","5-9","\u226510")))
+        choices = c("","<1","1-4","5-9",">=10")))
     ),
 
     hcc = shiny::fluidRow(
@@ -331,8 +331,8 @@ cancer_specific_ui <- function(ns, category) {
         "CA 19-9 (U/mL)", value = NA, min = 0)),
       shiny::column(4, shinyWidgets::pickerInput(ns("cs_resect"),
         "Resecabilidad",
-        choices = c("","Resecable","Lim\u00edtrofe","Localmente avanzado",
-                    "Metast\u00e1sico"))),
+        choices = c("","Resecable","Limitrofe","Localmente avanzado",
+                    "Metastasico"))),
       shiny::column(4, shinyWidgets::pickerInput(ns("cs_brca_panc"),
         "BRCA / HRD",
         choices = c("","BRCA1","BRCA2","HRD positivo","Negativo",
@@ -352,8 +352,8 @@ cancer_specific_ui <- function(ns, category) {
 
     renal = shiny::fluidRow(
       shiny::column(4, shinyWidgets::pickerInput(ns("cs_rcc_histo"),
-        "Histolog\u00eda",
-        choices = c("","C\u00e9lulas claras","Papilar","Crom\u00f3fobo",
+        "Histologia",
+        choices = c("","Celulas claras","Papilar","Cromofobo",
                     "Sarcomatoide","Otro"))),
       shiny::column(4, shinyWidgets::pickerInput(ns("cs_imdc"),
         "IMDC",
@@ -365,7 +365,7 @@ cancer_specific_ui <- function(ns, category) {
 
     bladder = shiny::fluidRow(
       shiny::column(4, shinyWidgets::pickerInput(ns("cs_invasive"),
-        "Invasi\u00f3n muscular",
+        "Invasion muscular",
         choices = c("","NMIBC","MIBC","desconocido"))),
       shiny::column(4, shinyWidgets::pickerInput(ns("cs_grade_bl"),
         "Grado OMS",
@@ -382,7 +382,7 @@ cancer_specific_ui <- function(ns, category) {
       shiny::column(3, shinyWidgets::pickerInput(ns("cs_idh"), "IDH",
         choices = c("","mutado","wildtype","desconocido"))),
       shiny::column(3, shinyWidgets::pickerInput(ns("cs_1p19q"), "1p/19q",
-        choices = c("","Co-deleci\u00f3n","Intacto","desconocido"))),
+        choices = c("","Co-delecion","Intacto","desconocido"))),
       shiny::column(3, shinyWidgets::pickerInput(ns("cs_mgmt"), "MGMT",
         choices = c("","Metilado","No metilado","desconocido")))
     ),
@@ -394,7 +394,7 @@ cancer_specific_ui <- function(ns, category) {
       shiny::column(4, shiny::numericInput(ns("cs_blasts"),
         "Blastos en MO (%)", value = NA, min = 0, max = 100)),
       shiny::column(4, shinyWidgets::pickerInput(ns("cs_cytogen"),
-        "Citogen\u00e9tica",
+        "Citogenetica",
         choices = c("","Favorable","Intermedio","Adverso","Pendiente")))
     ),
 
@@ -414,10 +414,10 @@ cancer_specific_ui <- function(ns, category) {
     appendix = shiny::tagList(
       shiny::fluidRow(
         shiny::column(4, shinyWidgets::pickerInput(ns("cs_app_histo"),
-          "Histolog\u00eda",
+          "Histologia",
           choices = c("","LAMN","HAMN","Adenocarcinoma mucinoso",
                       "Adenocarcinoma no mucinoso","Carcinoide / NET",
-                      "C\u00e9lulas en anillo de sello"))),
+                      "Celulas en anillo de sello"))),
         shiny::column(4, shinyWidgets::pickerInput(ns("cs_app_pci"),
           "Peritoneal Cancer Index",
           choices = c("","0","1-10","11-20","21-30","31-39"))),
@@ -450,7 +450,7 @@ cancer_specific_ui <- function(ns, category) {
       shiny::column(4, shinyWidgets::pickerInput(ns("cs_vulv_p16"), "p16 / VPH",
         choices = c("","p16+ VPH+","p16- VPH-","desconocido"))),
       shiny::column(4, shiny::numericInput(ns("cs_vulv_depth"),
-        "Profundidad invasi\u00f3n (mm)", value = NA, min = 0, step = 0.1))
+        "Profundidad invasion (mm)", value = NA, min = 0, step = 0.1))
     ),
 
     penile = shiny::fluidRow(
@@ -460,14 +460,14 @@ cancer_specific_ui <- function(ns, category) {
       shiny::column(4, shinyWidgets::pickerInput(ns("cs_pen_p16"), "p16 / VPH",
         choices = c("","p16+ VPH+","p16- VPH-","desconocido"))),
       shiny::column(4, shinyWidgets::pickerInput(ns("cs_pen_lvi"),
-        "Invasi\u00f3n linfovascular",
+        "Invasion linfovascular",
         choices = c("","Presente","Ausente","Desconocida")))
     ),
 
     testis = shiny::tagList(
       shiny::fluidRow(
         shiny::column(3, shinyWidgets::pickerInput(ns("cs_testis_histo"),
-          "Histolog\u00eda",
+          "Histologia",
           choices = c("","Seminoma","No seminoma","Mixto"))),
         shiny::column(3, shinyWidgets::pickerInput(ns("cs_testis_stage"),
           "AJCC / IGCCCG",
@@ -476,13 +476,13 @@ cancer_specific_ui <- function(ns, category) {
         shiny::column(3, shiny::numericInput(ns("cs_afp_t"),
           "AFP (ng/mL)", value = NA, min = 0)),
         shiny::column(3, shiny::numericInput(ns("cs_bhcg"),
-          "\u03b2-hCG (mUI/mL)", value = NA, min = 0))
+          "beta-hCG (mUI/mL)", value = NA, min = 0))
       ),
       shiny::fluidRow(
         shiny::column(6, shiny::numericInput(ns("cs_ldh_t"),
           "LDH (U/L)", value = NA, min = 0)),
         shiny::column(6, shinyWidgets::pickerInput(ns("cs_testis_lvi"),
-          "Invasi\u00f3n linfovascular",
+          "Invasion linfovascular",
           choices = c("","Presente","Ausente","Desconocida")))
       )
     ),
@@ -490,7 +490,7 @@ cancer_specific_ui <- function(ns, category) {
     esophagus = shiny::tagList(
       shiny::fluidRow(
         shiny::column(3, shinyWidgets::pickerInput(ns("cs_eso_histo"),
-          "Histolog\u00eda",
+          "Histologia",
           choices = c("","Adenocarcinoma","Escamoso","Otro"))),
         shiny::column(3, shinyWidgets::pickerInput(ns("cs_siewert"),
           "Siewert",
@@ -499,14 +499,14 @@ cancer_specific_ui <- function(ns, category) {
           choices = c("","0","1+","2+ ISH-","2+ ISH+","3+","desconocido"))),
         shiny::column(3, shinyWidgets::pickerInput(ns("cs_pdl1_eso"),
           "PD-L1 CPS",
-          choices = c("","<1","1-9","10-19","\u226520")))
+          choices = c("","<1","1-9","10-19",">=20")))
       ),
       shiny::fluidRow(
         shiny::column(6, shinyWidgets::pickerInput(ns("cs_msi_eso"), "MSI",
           choices = c("","MSS","MSI-H","desconocido"))),
         shiny::column(6, shinyWidgets::pickerInput(ns("cs_eso_barrett"),
           "Esofago de Barrett",
-          choices = c("","S\u00ed","No","Desconocido")))
+          choices = c("","Si","No","Desconocido")))
       )
     ),
 
@@ -519,14 +519,14 @@ cancer_specific_ui <- function(ns, category) {
           "CA 19-9 (U/mL)", value = NA, min = 0)),
         shiny::column(4, shinyWidgets::pickerInput(ns("cs_amp_resect"),
           "Resecabilidad",
-          choices = c("","Resecable","Lim\u00edtrofe","Localmente avanzado",
-                      "Metast\u00e1sico")))
+          choices = c("","Resecable","Limitrofe","Localmente avanzado",
+                      "Metastasico")))
       ),
       shiny::fluidRow(
         shiny::column(6, shinyWidgets::pickerInput(ns("cs_amp_msi"), "MMR / MSI",
           choices = c("","pMMR / MSS","dMMR / MSI-H","desconocido"))),
         shiny::column(6, shinyWidgets::pickerInput(ns("cs_amp_margin"),
-          "Margen quir\u00fargico",
+          "Margen quirurgico",
           choices = c("","R0","R1","R2","No aplica")))
       )
     ),
@@ -534,9 +534,9 @@ cancer_specific_ui <- function(ns, category) {
     biliary = shiny::tagList(
       shiny::fluidRow(
         shiny::column(4, shinyWidgets::pickerInput(ns("cs_bil_site"),
-          "Localizaci\u00f3n",
-          choices = c("","Intrahep\u00e1tico","Hilio (Klatskin)","Distal",
-                      "Ves\u00edcula"))),
+          "Localizacion",
+          choices = c("","Intrahepatico","Hilio (Klatskin)","Distal",
+                      "Vesicula"))),
         shiny::column(4, shinyWidgets::pickerInput(ns("cs_bil_bismuth"),
           "Bismuth-Corlette",
           choices = c("","I","II","IIIa","IIIb","IV","No aplica"))),
@@ -548,7 +548,7 @@ cancer_specific_ui <- function(ns, category) {
           choices = c("","Mutado","Wildtype","No realizado"))),
         shiny::column(4, shinyWidgets::pickerInput(ns("cs_bil_fgfr"),
           "FGFR2",
-          choices = c("","Fusi\u00f3n / rearr.","Mutaci\u00f3n","Wildtype",
+          choices = c("","Fusion / rearr.","Mutacion","Wildtype",
                       "No realizado"))),
         shiny::column(4, shinyWidgets::pickerInput(ns("cs_bil_her2"), "HER2",
           choices = c("","0","1+","2+","3+","desconocido")))
@@ -557,8 +557,8 @@ cancer_specific_ui <- function(ns, category) {
 
     salivary = shiny::fluidRow(
       shiny::column(4, shinyWidgets::pickerInput(ns("cs_sal_histo"),
-        "Histolog\u00eda",
-        choices = c("","Mucoepidermoide","Adenoide qu\u00edstico","Acinar",
+        "Histologia",
+        choices = c("","Mucoepidermoide","Adenoide quistico","Acinar",
                     "Carcinoma ex pleomorfo","Salival ductal","Otro"))),
       shiny::column(4, shinyWidgets::pickerInput(ns("cs_sal_grade"),
         "Grado",
@@ -570,19 +570,19 @@ cancer_specific_ui <- function(ns, category) {
 
     mesothelioma = shiny::fluidRow(
       shiny::column(4, shinyWidgets::pickerInput(ns("cs_meso_histo"),
-        "Histolog\u00eda",
-        choices = c("","Epitelioide","Sarcomatoide","Bif\u00e1sico"))),
+        "Histologia",
+        choices = c("","Epitelioide","Sarcomatoide","Bifasico"))),
       shiny::column(4, shinyWidgets::pickerInput(ns("cs_meso_site"),
         "Sitio",
         choices = c("","Pleural","Peritoneal","Pericardio","Otro"))),
       shiny::column(4, shinyWidgets::awesomeCheckbox(ns("cs_meso_asbest"),
-        "Exposici\u00f3n a asbesto", FALSE))
+        "Exposicion a asbesto", FALSE))
     ),
 
     thymoma = shiny::fluidRow(
       shiny::column(4, shinyWidgets::pickerInput(ns("cs_thy_who"),
         "WHO",
-        choices = c("","A","AB","B1","B2","B3","C / carcinoma t\u00edmico"))),
+        choices = c("","A","AB","B1","B2","B3","C / carcinoma timico"))),
       shiny::column(4, shinyWidgets::pickerInput(ns("cs_thy_masaoka"),
         "Masaoka-Koga",
         choices = c("","I","IIa","IIb","III","IVa","IVb"))),
@@ -594,11 +594,11 @@ cancer_specific_ui <- function(ns, category) {
       shiny::fluidRow(
         shiny::column(3, shinyWidgets::pickerInput(ns("cs_net_site"),
           "Sitio primario",
-          choices = c("","Pancre\u00e1tico","Intestino delgado","Apendicular",
-                      "Pulmonar","G\u00e1strico","Recto","Otro / desconocido"))),
+          choices = c("","Pancreatico","Intestino delgado","Apendicular",
+                      "Pulmonar","Gastrico","Recto","Otro / desconocido"))),
         shiny::column(3, shinyWidgets::pickerInput(ns("cs_net_grade"),
           "Grado WHO",
-          choices = c("","G1 (Ki67 \u22642%)","G2 (3-20%)","G3 (>20%)",
+          choices = c("","G1 (Ki67 <=2%)","G2 (3-20%)","G3 (>20%)",
                       "NEC poco diferenciado"))),
         shiny::column(3, shiny::numericInput(ns("cs_net_ki67"),
           "Ki-67 (%)", value = NA, min = 0, max = 100)),
@@ -620,13 +620,13 @@ cancer_specific_ui <- function(ns, category) {
     cup = shiny::tagList(
       shiny::fluidRow(
         shiny::column(4, shinyWidgets::pickerInput(ns("cs_cup_histo"),
-          "Patr\u00f3n histol\u00f3gico",
+          "Patron histologico",
           choices = c("","Adenocarcinoma","Escamoso","Indiferenciado",
                       "Neuroendocrino","Otro"))),
         shiny::column(4, shinyWidgets::pickerInput(ns("cs_cup_pred"),
           "Sitio predicho (perfil molecular)",
-          choices = c("","Pulm\u00f3n","Mama","Colorrectal","Pancreas",
-                      "G\u00e1strico","Hepatobiliar","Ovario","Pr\u00f3stata",
+          choices = c("","Pulmon","Mama","Colorrectal","Pancreas",
+                      "Gastrico","Hepatobiliar","Ovario","Prostata",
                       "Otro","No realizado"))),
         shiny::column(4, shinyWidgets::pickerInput(ns("cs_cup_msi"), "MSI",
           choices = c("","MSS","MSI-H","desconocido")))
@@ -667,7 +667,7 @@ cancer_specific_ui <- function(ns, category) {
 
   bs4Dash::box(
     title = shiny::tagList(shiny::icon("ribbon"),
-      sprintf(" Datos espec\u00edficos \u2014 %s", cancer_category_label(category))),
+      sprintf(" Datos especificos -- %s", cancer_category_label(category))),
     width = 12, collapsible = TRUE, status = "danger", solidHeader = TRUE,
     shiny::div(class = "cancer-specific-card p-2", body)
   )
