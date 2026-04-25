@@ -49,8 +49,11 @@ mod_register_new_ui <- function(id) {
             shiny::column(6,
               shiny::textInput(ns("email"), "Correo electr\u00f3nico"))
           ),
-          shiny::selectizeInput(ns("estado_n"),    "Estado de nacimiento",    choices = NULL),
-          shiny::selectizeInput(ns("municipio_n"), "Municipio de nacimiento", choices = NULL),
+          shiny::selectizeInput(ns("estado_n"),    "Estado de nacimiento",
+            choices = c("" = "", lookup_states())),
+          shiny::selectizeInput(ns("municipio_n"), "Municipio de nacimiento",
+            choices = c("" = ""),
+            options = list(placeholder = "Seleccione primero el estado")),
           shiny::fluidRow(
             shiny::column(6,
               shinyWidgets::pickerInput(ns("insurance"),
@@ -151,10 +154,8 @@ mod_register_new_server <- function(id, pool, user) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # Populate states + comorbidities once at startup.
+    # Populate comorbidities once at startup. Estado is preloaded in UI.
     shiny::observe({
-      shiny::updateSelectizeInput(session, "estado_n",
-        choices = c("", lookup_states()), server = TRUE)
       icd <- tryCatch(lookup_icd11(), error = function(e) NULL)
       if (!is.null(icd)) {
         ch <- if (is.data.frame(icd)) {
@@ -166,12 +167,14 @@ mod_register_new_server <- function(id, pool, user) {
       }
     })
 
-    # Cascading municipios: refilter every time estado_n changes.
+    # Cascading municipios: refilter every time estado_n changes (client-side
+    # so options appear on click without typing).
     shiny::observeEvent(input$estado_n, {
+      mun <- if (nzchar(input$estado_n %||% "")) lookup_municipios(input$estado_n)
+             else character(0)
       shiny::updateSelectizeInput(session, "municipio_n",
-        choices = c("", lookup_municipios(input$estado_n)),
-        server = TRUE)
-    }, ignoreNULL = FALSE)
+        choices = c("" = "", mun), selected = "")
+    }, ignoreNULL = FALSE, ignoreInit = FALSE)
 
     enc <- mod_encounter_form_server("enc",
                                      patient = function() NULL,

@@ -22,29 +22,44 @@ cancer_category <- function(oncotree) {
   if (is.null(oncotree) || !nzchar(oncotree)) return(NA_character_)
   s <- tolower(oncotree)
   if (grepl("breast",                          s)) return("breast")
+  if (grepl("appendix|appendiceal",            s)) return("appendix")
+  if (grepl("anal canal|anus|anal ",           s)) return("anal")
   if (grepl("colon|rectal|colorectal|crc",     s)) return("colorectal")
   if (grepl("small cell lung|sclc",            s)) return("lung_sclc")
-  if (grepl("non-small cell|nsclc|lung adeno|lung squamous|lung carcinoma", s))
+  if (grepl("non-small cell|nsclc|lung adeno|lung squamous|lung carcinoma|nscl", s))
                                                    return("lung_nsclc")
+  if (grepl("mesothelioma",                    s)) return("mesothelioma")
+  if (grepl("thymoma|thymic",                  s)) return("thymoma")
   if (grepl("prostate",                        s)) return("prostate")
+  if (grepl("testis|testicular|seminoma|germ cell", s)) return("testis")
   if (grepl("cervix|cervical",                 s)) return("gyn_cervical")
   if (grepl("ovari|fallop|peritoneal",         s)) return("gyn_ovarian")
   if (grepl("endometri|uterine",               s)) return("gyn_endometrial")
+  if (grepl("vulva",                           s)) return("vulvar")
+  if (grepl("penile|penis",                    s)) return("penile")
   if (grepl("thyroid",                         s)) return("thyroid")
-  if (grepl("melanoma|cutaneous",              s)) return("melanoma")
+  if (grepl("melanoma|cutaneous|skin ",        s)) return("melanoma")
   if (grepl("lymphoma|hodgkin",                s)) return("lymphoma")
-  if (grepl("sarcoma|gist",                    s)) return("sarcoma")
+  if (grepl("gist",                            s)) return("sarcoma")
+  if (grepl("sarcoma",                         s)) return("sarcoma")
+  if (grepl("esophag|gastroesophageal|gej|gastro-esophageal", s)) return("esophagus")
   if (grepl("gastric|stomach",                 s)) return("gastric")
+  if (grepl("ampulla|periampullary",           s)) return("ampullary")
+  if (grepl("cholangio|biliary|gallbladder",   s)) return("biliary")
   if (grepl("hepatocellular|hcc|liver",        s)) return("hcc")
   if (grepl("pancrea",                         s)) return("pancreas")
-  if (grepl("head and neck|oropharyn|larynx|nasophar|hypophar|oral cavity",
+  if (grepl("salivary|parotid",                s)) return("salivary")
+  if (grepl("head and neck|oropharyn|larynx|nasophar|hypophar|oral cavity|tongue",
             s))                                    return("head_neck")
   if (grepl("renal|kidney",                    s)) return("renal")
   if (grepl("bladder|urothelial",              s)) return("bladder")
-  if (grepl("glioma|glioblas|astrocyt|cns",    s)) return("cns_glioma")
+  if (grepl("glioma|glioblas|astrocyt|cns|meningioma|ependym|medulloblas",
+            s))                                    return("cns_glioma")
+  if (grepl("neuroendocrine|net|carcinoid|nec ", s)) return("net")
   if (grepl("leukem|aml|all|cll|cml",          s)) return("leukemia")
   if (grepl("myeloma|plasma cell",             s)) return("myeloma")
-  NA_character_
+  if (grepl("unknown primary|cup|occult",      s)) return("cup")
+  "other"   # generic fallback compartment
 }
 
 #' Pretty-print the category for the UI header.
@@ -71,6 +86,20 @@ cancer_category_label <- function(cat) {
     cns_glioma      = "Tumor del SNC",
     leukemia        = "Leucemia",
     myeloma         = "Mieloma",
+    appendix        = "C\u00e1ncer de ap\u00e9ndice",
+    anal            = "C\u00e1ncer anal",
+    vulvar          = "C\u00e1ncer de vulva",
+    penile          = "C\u00e1ncer de pene",
+    testis          = "C\u00e1ncer de test\u00edculo",
+    esophagus       = "C\u00e1ncer de es\u00f3fago / GEJ",
+    ampullary       = "C\u00e1ncer ampular",
+    biliary         = "V\u00edas biliares / ves\u00edcula",
+    salivary        = "Gl\u00e1ndulas salivales",
+    mesothelioma    = "Mesotelioma",
+    thymoma         = "Timoma / carcinoma t\u00edmico",
+    net             = "Tumor neuroendocrino (NET / NEC)",
+    cup             = "Carcinoma de origen primario desconocido (CUP)",
+    other           = "Marcadores generales",
     "")
 }
 
@@ -379,6 +408,259 @@ cancer_specific_ui <- function(ns, category) {
         "Cadena ligera",
         choices = c("","Kappa","Lambda","No secretor")))
     ),
+
+    # --- new categories ----------------------------------------------------
+
+    appendix = shiny::tagList(
+      shiny::fluidRow(
+        shiny::column(4, shinyWidgets::pickerInput(ns("cs_app_histo"),
+          "Histolog\u00eda",
+          choices = c("","LAMN","HAMN","Adenocarcinoma mucinoso",
+                      "Adenocarcinoma no mucinoso","Carcinoide / NET",
+                      "C\u00e9lulas en anillo de sello"))),
+        shiny::column(4, shinyWidgets::pickerInput(ns("cs_app_pci"),
+          "Peritoneal Cancer Index",
+          choices = c("","0","1-10","11-20","21-30","31-39"))),
+        shiny::column(4, shinyWidgets::pickerInput(ns("cs_app_grade"),
+          "Grado",
+          choices = c("","Bajo","Alto","No aplica")))
+      ),
+      shiny::fluidRow(
+        shiny::column(6, shinyWidgets::pickerInput(ns("cs_app_msi"), "MMR / MSI",
+          choices = c("","pMMR / MSS","dMMR / MSI-H","desconocido"))),
+        shiny::column(6, shinyWidgets::awesomeCheckbox(ns("cs_app_pmp"),
+          "Pseudomixoma peritoneal", FALSE))
+      )
+    ),
+
+    anal = shiny::fluidRow(
+      shiny::column(4, shinyWidgets::pickerInput(ns("cs_anal_stage"),
+        "AJCC",
+        choices = c("","I","IIA","IIB","IIIA","IIIB","IIIC","IV"))),
+      shiny::column(4, shinyWidgets::pickerInput(ns("cs_anal_p16"), "p16 / VPH",
+        choices = c("","p16+ VPH+","p16- VPH-","desconocido"))),
+      shiny::column(4, shinyWidgets::pickerInput(ns("cs_anal_hiv"), "VIH",
+        choices = c("","Negativo","Positivo","Desconocido")))
+    ),
+
+    vulvar = shiny::fluidRow(
+      shiny::column(4, shinyWidgets::pickerInput(ns("cs_vulv_figo"),
+        "FIGO 2021",
+        choices = c("","I","IA","IB","II","IIIA","IIIB","IIIC","IVA","IVB"))),
+      shiny::column(4, shinyWidgets::pickerInput(ns("cs_vulv_p16"), "p16 / VPH",
+        choices = c("","p16+ VPH+","p16- VPH-","desconocido"))),
+      shiny::column(4, shiny::numericInput(ns("cs_vulv_depth"),
+        "Profundidad invasi\u00f3n (mm)", value = NA, min = 0, step = 0.1))
+    ),
+
+    penile = shiny::fluidRow(
+      shiny::column(4, shinyWidgets::pickerInput(ns("cs_pen_grade"),
+        "Grado",
+        choices = c("","G1","G2","G3","G4"))),
+      shiny::column(4, shinyWidgets::pickerInput(ns("cs_pen_p16"), "p16 / VPH",
+        choices = c("","p16+ VPH+","p16- VPH-","desconocido"))),
+      shiny::column(4, shinyWidgets::pickerInput(ns("cs_pen_lvi"),
+        "Invasi\u00f3n linfovascular",
+        choices = c("","Presente","Ausente","Desconocida")))
+    ),
+
+    testis = shiny::tagList(
+      shiny::fluidRow(
+        shiny::column(3, shinyWidgets::pickerInput(ns("cs_testis_histo"),
+          "Histolog\u00eda",
+          choices = c("","Seminoma","No seminoma","Mixto"))),
+        shiny::column(3, shinyWidgets::pickerInput(ns("cs_testis_stage"),
+          "AJCC / IGCCCG",
+          choices = c("","IA","IB","IIA","IIB","IIC","IIIA","IIIB","IIIC",
+                      "Bueno","Intermedio","Pobre"))),
+        shiny::column(3, shiny::numericInput(ns("cs_afp_t"),
+          "AFP (ng/mL)", value = NA, min = 0)),
+        shiny::column(3, shiny::numericInput(ns("cs_bhcg"),
+          "\u03b2-hCG (mUI/mL)", value = NA, min = 0))
+      ),
+      shiny::fluidRow(
+        shiny::column(6, shiny::numericInput(ns("cs_ldh_t"),
+          "LDH (U/L)", value = NA, min = 0)),
+        shiny::column(6, shinyWidgets::pickerInput(ns("cs_testis_lvi"),
+          "Invasi\u00f3n linfovascular",
+          choices = c("","Presente","Ausente","Desconocida")))
+      )
+    ),
+
+    esophagus = shiny::tagList(
+      shiny::fluidRow(
+        shiny::column(3, shinyWidgets::pickerInput(ns("cs_eso_histo"),
+          "Histolog\u00eda",
+          choices = c("","Adenocarcinoma","Escamoso","Otro"))),
+        shiny::column(3, shinyWidgets::pickerInput(ns("cs_siewert"),
+          "Siewert",
+          choices = c("","I","II","III","No GEJ"))),
+        shiny::column(3, shinyWidgets::pickerInput(ns("cs_her2_eso"), "HER2",
+          choices = c("","0","1+","2+ ISH-","2+ ISH+","3+","desconocido"))),
+        shiny::column(3, shinyWidgets::pickerInput(ns("cs_pdl1_eso"),
+          "PD-L1 CPS",
+          choices = c("","<1","1-9","10-19","\u226520")))
+      ),
+      shiny::fluidRow(
+        shiny::column(6, shinyWidgets::pickerInput(ns("cs_msi_eso"), "MSI",
+          choices = c("","MSS","MSI-H","desconocido"))),
+        shiny::column(6, shinyWidgets::pickerInput(ns("cs_eso_barrett"),
+          "Esofago de Barrett",
+          choices = c("","S\u00ed","No","Desconocido")))
+      )
+    ),
+
+    ampullary = shiny::tagList(
+      shiny::fluidRow(
+        shiny::column(4, shinyWidgets::pickerInput(ns("cs_amp_subtype"),
+          "Subtipo",
+          choices = c("","Intestinal","Pancreatobiliar","Mixto"))),
+        shiny::column(4, shiny::numericInput(ns("cs_amp_ca199"),
+          "CA 19-9 (U/mL)", value = NA, min = 0)),
+        shiny::column(4, shinyWidgets::pickerInput(ns("cs_amp_resect"),
+          "Resecabilidad",
+          choices = c("","Resecable","Lim\u00edtrofe","Localmente avanzado",
+                      "Metast\u00e1sico")))
+      ),
+      shiny::fluidRow(
+        shiny::column(6, shinyWidgets::pickerInput(ns("cs_amp_msi"), "MMR / MSI",
+          choices = c("","pMMR / MSS","dMMR / MSI-H","desconocido"))),
+        shiny::column(6, shinyWidgets::pickerInput(ns("cs_amp_margin"),
+          "Margen quir\u00fargico",
+          choices = c("","R0","R1","R2","No aplica")))
+      )
+    ),
+
+    biliary = shiny::tagList(
+      shiny::fluidRow(
+        shiny::column(4, shinyWidgets::pickerInput(ns("cs_bil_site"),
+          "Localizaci\u00f3n",
+          choices = c("","Intrahep\u00e1tico","Hilio (Klatskin)","Distal",
+                      "Ves\u00edcula"))),
+        shiny::column(4, shinyWidgets::pickerInput(ns("cs_bil_bismuth"),
+          "Bismuth-Corlette",
+          choices = c("","I","II","IIIa","IIIb","IV","No aplica"))),
+        shiny::column(4, shiny::numericInput(ns("cs_bil_ca199"),
+          "CA 19-9 (U/mL)", value = NA, min = 0))
+      ),
+      shiny::fluidRow(
+        shiny::column(4, shinyWidgets::pickerInput(ns("cs_bil_idh"), "IDH1/2",
+          choices = c("","Mutado","Wildtype","No realizado"))),
+        shiny::column(4, shinyWidgets::pickerInput(ns("cs_bil_fgfr"),
+          "FGFR2",
+          choices = c("","Fusi\u00f3n / rearr.","Mutaci\u00f3n","Wildtype",
+                      "No realizado"))),
+        shiny::column(4, shinyWidgets::pickerInput(ns("cs_bil_her2"), "HER2",
+          choices = c("","0","1+","2+","3+","desconocido")))
+      )
+    ),
+
+    salivary = shiny::fluidRow(
+      shiny::column(4, shinyWidgets::pickerInput(ns("cs_sal_histo"),
+        "Histolog\u00eda",
+        choices = c("","Mucoepidermoide","Adenoide qu\u00edstico","Acinar",
+                    "Carcinoma ex pleomorfo","Salival ductal","Otro"))),
+      shiny::column(4, shinyWidgets::pickerInput(ns("cs_sal_grade"),
+        "Grado",
+        choices = c("","Bajo","Intermedio","Alto"))),
+      shiny::column(4, shinyWidgets::pickerInput(ns("cs_sal_her2"),
+        "HER2 / AR",
+        choices = c("","HER2+","AR+","Doble negativo","Desconocido")))
+    ),
+
+    mesothelioma = shiny::fluidRow(
+      shiny::column(4, shinyWidgets::pickerInput(ns("cs_meso_histo"),
+        "Histolog\u00eda",
+        choices = c("","Epitelioide","Sarcomatoide","Bif\u00e1sico"))),
+      shiny::column(4, shinyWidgets::pickerInput(ns("cs_meso_site"),
+        "Sitio",
+        choices = c("","Pleural","Peritoneal","Pericardio","Otro"))),
+      shiny::column(4, shinyWidgets::awesomeCheckbox(ns("cs_meso_asbest"),
+        "Exposici\u00f3n a asbesto", FALSE))
+    ),
+
+    thymoma = shiny::fluidRow(
+      shiny::column(4, shinyWidgets::pickerInput(ns("cs_thy_who"),
+        "WHO",
+        choices = c("","A","AB","B1","B2","B3","C / carcinoma t\u00edmico"))),
+      shiny::column(4, shinyWidgets::pickerInput(ns("cs_thy_masaoka"),
+        "Masaoka-Koga",
+        choices = c("","I","IIa","IIb","III","IVa","IVb"))),
+      shiny::column(4, shinyWidgets::awesomeCheckbox(ns("cs_thy_mg"),
+        "Miastenia gravis", FALSE))
+    ),
+
+    net = shiny::tagList(
+      shiny::fluidRow(
+        shiny::column(3, shinyWidgets::pickerInput(ns("cs_net_site"),
+          "Sitio primario",
+          choices = c("","Pancre\u00e1tico","Intestino delgado","Apendicular",
+                      "Pulmonar","G\u00e1strico","Recto","Otro / desconocido"))),
+        shiny::column(3, shinyWidgets::pickerInput(ns("cs_net_grade"),
+          "Grado WHO",
+          choices = c("","G1 (Ki67 \u22642%)","G2 (3-20%)","G3 (>20%)",
+                      "NEC poco diferenciado"))),
+        shiny::column(3, shiny::numericInput(ns("cs_net_ki67"),
+          "Ki-67 (%)", value = NA, min = 0, max = 100)),
+        shiny::column(3, shinyWidgets::pickerInput(ns("cs_net_func"),
+          "Funcionante",
+          choices = c("","No funcionante","Insulinoma","Glucagonoma",
+                      "Gastrinoma","VIPoma","Carcinoide","Somatostatinoma",
+                      "Otro")))
+      ),
+      shiny::fluidRow(
+        shiny::column(6, shiny::numericInput(ns("cs_net_cga"),
+          "Cromogranina A (ng/mL)", value = NA, min = 0)),
+        shiny::column(6, shinyWidgets::pickerInput(ns("cs_net_ssrt"),
+          "Receptor de somatostatina (PET DOTA)",
+          choices = c("","Positivo","Negativo","No realizado")))
+      )
+    ),
+
+    cup = shiny::tagList(
+      shiny::fluidRow(
+        shiny::column(4, shinyWidgets::pickerInput(ns("cs_cup_histo"),
+          "Patr\u00f3n histol\u00f3gico",
+          choices = c("","Adenocarcinoma","Escamoso","Indiferenciado",
+                      "Neuroendocrino","Otro"))),
+        shiny::column(4, shinyWidgets::pickerInput(ns("cs_cup_pred"),
+          "Sitio predicho (perfil molecular)",
+          choices = c("","Pulm\u00f3n","Mama","Colorrectal","Pancreas",
+                      "G\u00e1strico","Hepatobiliar","Ovario","Pr\u00f3stata",
+                      "Otro","No realizado"))),
+        shiny::column(4, shinyWidgets::pickerInput(ns("cs_cup_msi"), "MSI",
+          choices = c("","MSS","MSI-H","desconocido")))
+      ),
+      shiny::fluidRow(
+        shiny::column(6, shiny::numericInput(ns("cs_cup_tmb"),
+          "TMB (mut/Mb)", value = NA, min = 0, step = 0.1)),
+        shiny::column(6, shinyWidgets::pickerInput(ns("cs_cup_pdl1"),
+          "PD-L1",
+          choices = c("","positivo","negativo","desconocido")))
+      )
+    ),
+
+    other = shiny::tagList(
+      shiny::fluidRow(
+        shiny::column(6, shiny::textInput(ns("cs_other_ihc"),
+          "IHQ relevante",
+          placeholder = "Ej. CK7+, CK20-, TTF1+, ...")),
+        shiny::column(6, shiny::textInput(ns("cs_other_ngs"),
+          "Hallazgos NGS / panel molecular",
+          placeholder = "Ej. TP53 mut, KRAS G12D, ..."))
+      ),
+      shiny::fluidRow(
+        shiny::column(4, shinyWidgets::pickerInput(ns("cs_other_msi"),
+          "MSI",
+          choices = c("","MSS","MSI-H","desconocido"))),
+        shiny::column(4, shiny::numericInput(ns("cs_other_tmb"),
+          "TMB (mut/Mb)", value = NA, min = 0, step = 0.1)),
+        shiny::column(4, shinyWidgets::pickerInput(ns("cs_other_pdl1"),
+          "PD-L1",
+          choices = c("","positivo","negativo","no realizado")))
+      )
+    ),
+
     NULL
   )
   if (is.null(body)) return(NULL)
@@ -424,6 +706,28 @@ cancer_specific_values <- function(input, category) {
     cns_glioma      = c("cs_who_cns","cs_idh","cs_1p19q","cs_mgmt"),
     leukemia        = c("cs_leuk_type","cs_blasts","cs_cytogen"),
     myeloma         = c("cs_iss","cs_mpc","cs_chain"),
+    appendix        = c("cs_app_histo","cs_app_pci","cs_app_grade",
+                        "cs_app_msi","cs_app_pmp"),
+    anal            = c("cs_anal_stage","cs_anal_p16","cs_anal_hiv"),
+    vulvar          = c("cs_vulv_figo","cs_vulv_p16","cs_vulv_depth"),
+    penile          = c("cs_pen_grade","cs_pen_p16","cs_pen_lvi"),
+    testis          = c("cs_testis_histo","cs_testis_stage","cs_afp_t",
+                        "cs_bhcg","cs_ldh_t","cs_testis_lvi"),
+    esophagus       = c("cs_eso_histo","cs_siewert","cs_her2_eso",
+                        "cs_pdl1_eso","cs_msi_eso","cs_eso_barrett"),
+    ampullary       = c("cs_amp_subtype","cs_amp_ca199","cs_amp_resect",
+                        "cs_amp_msi","cs_amp_margin"),
+    biliary         = c("cs_bil_site","cs_bil_bismuth","cs_bil_ca199",
+                        "cs_bil_idh","cs_bil_fgfr","cs_bil_her2"),
+    salivary        = c("cs_sal_histo","cs_sal_grade","cs_sal_her2"),
+    mesothelioma    = c("cs_meso_histo","cs_meso_site","cs_meso_asbest"),
+    thymoma         = c("cs_thy_who","cs_thy_masaoka","cs_thy_mg"),
+    net             = c("cs_net_site","cs_net_grade","cs_net_ki67",
+                        "cs_net_func","cs_net_cga","cs_net_ssrt"),
+    cup             = c("cs_cup_histo","cs_cup_pred","cs_cup_msi",
+                        "cs_cup_tmb","cs_cup_pdl1"),
+    other           = c("cs_other_ihc","cs_other_ngs","cs_other_msi",
+                        "cs_other_tmb","cs_other_pdl1"),
     character(0)
   )
   out <- list()
