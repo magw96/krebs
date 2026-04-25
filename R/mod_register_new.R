@@ -50,9 +50,9 @@ mod_register_new_ui <- function(id) {
               shiny::textInput(ns("email"), "Correo electronico"))
           ),
           shiny::selectizeInput(ns("estado_n"),    "Estado de nacimiento",
-            choices = c("" = "", lookup_states())),
+            choices = c("", lookup_states())),
           shiny::selectizeInput(ns("municipio_n"), "Municipio de nacimiento",
-            choices = c("" = ""),
+            choices = "",
             options = list(placeholder = "Seleccione primero el estado")),
           shiny::fluidRow(
             shiny::column(6,
@@ -173,7 +173,7 @@ mod_register_new_server <- function(id, pool, user) {
       mun <- if (nzchar(input$estado_n %||% "")) lookup_municipios(input$estado_n)
              else character(0)
       shiny::updateSelectizeInput(session, "municipio_n",
-        choices = c("" = "", mun), selected = "")
+        choices = c("", mun), selected = "")
     }, ignoreNULL = FALSE, ignoreInit = FALSE)
 
     enc <- mod_encounter_form_server("enc",
