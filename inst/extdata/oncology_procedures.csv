@@ -1,0 +1,190 @@
+site,procedure,modality
+Mama,Tumorectomia (lumpectomia),Cirugia conservadora
+Mama,Cuadrantectomia,Cirugia conservadora
+Mama,Mastectomia simple,Mastectomia
+Mama,Mastectomia radical modificada (Madden),Mastectomia
+Mama,Mastectomia radical (Halsted),Mastectomia
+Mama,Mastectomia con preservacion de piel,Mastectomia
+Mama,Mastectomia con preservacion de pezon,Mastectomia
+Mama,Mastectomia bilateral profilactica,Mastectomia
+Mama,Biopsia de ganglio centinela axilar,Linfadenectomia
+Mama,Diseccion radical de axila (niveles I-II),Linfadenectomia
+Mama,Diseccion axilar niveles I-II-III,Linfadenectomia
+Mama,Reconstruccion mamaria con expansor,Reconstruccion
+Mama,Reconstruccion mamaria con colgajo TRAM/DIEP,Reconstruccion
+Mama,Reconstruccion mamaria con colgajo dorsal ancho,Reconstruccion
+Pulmon,Lobectomia pulmonar,Reseccion pulmonar
+Pulmon,Bilobectomia,Reseccion pulmonar
+Pulmon,Neumonectomia,Reseccion pulmonar
+Pulmon,Segmentectomia anatomica,Reseccion pulmonar
+Pulmon,Reseccion en cuna (wedge),Reseccion pulmonar
+Pulmon,Reseccion en manga (sleeve),Reseccion pulmonar
+Pulmon,Lobectomia VATS,Cirugia minimo invasiva
+Pulmon,Lobectomia robotica,Cirugia minimo invasiva
+Pulmon,Mediastinoscopia,Estadificacion
+Pulmon,Linfadenectomia mediastinica sistematica,Linfadenectomia
+Pulmon,Pleurodesis quirurgica,Paliativo
+Pulmon,Decorticacion pleural,Paliativo
+Pulmon,Pleurectomia / decorticacion (P/D),Mesotelioma
+Pulmon,Pleuroneumonectomia extrapleural (EPP),Mesotelioma
+Cabeza y cuello,Tiroidectomia total,Tiroides
+Cabeza y cuello,Hemitiroidectomia (lobectomia),Tiroides
+Cabeza y cuello,Disekccion central de cuello (nivel VI),Linfadenectomia
+Cabeza y cuello,Diseccion radical modificada de cuello,Linfadenectomia
+Cabeza y cuello,Diseccion radical de cuello,Linfadenectomia
+Cabeza y cuello,Diseccion selectiva de cuello,Linfadenectomia
+Cabeza y cuello,Parotidectomia superficial,Glandulas salivales
+Cabeza y cuello,Parotidectomia total,Glandulas salivales
+Cabeza y cuello,Submaxilectomia,Glandulas salivales
+Cabeza y cuello,Glosectomia parcial,Cavidad oral
+Cabeza y cuello,Hemiglosectomia,Cavidad oral
+Cabeza y cuello,Glosectomia total,Cavidad oral
+Cabeza y cuello,Mandibulectomia segmentaria,Cavidad oral / mandibula
+Cabeza y cuello,Maxilectomia parcial,Maxilar
+Cabeza y cuello,Maxilectomia total,Maxilar
+Cabeza y cuello,Laringectomia parcial supraglotica,Laringe
+Cabeza y cuello,Laringectomia total,Laringe
+Cabeza y cuello,Faringolaringectomia total,Laringe / faringe
+Cabeza y cuello,Cordectomia laser CO2,Laringe
+Cabeza y cuello,Reseccion de tumor base de craneo,Base de craneo
+Cabeza y cuello,Reseccion de nasofaringe transoral / endoscopica,Nasofaringe
+Cabeza y cuello,Traqueostomia oncologica,Via aerea
+Esofago / GEJ,Esofagectomia transhiatal,Esofagectomia
+Esofago / GEJ,Esofagectomia Ivor-Lewis (3 campos),Esofagectomia
+Esofago / GEJ,Esofagectomia McKeown (3 campos),Esofagectomia
+Esofago / GEJ,Esofagectomia minimo invasiva (MIE),Esofagectomia
+Esofago / GEJ,Reseccion endoscopica mucosa (EMR),Endoscopica
+Esofago / GEJ,Diseccion endoscopica submucosa (ESD),Endoscopica
+Estomago,Gastrectomia total,Gastrectomia
+Estomago,Gastrectomia subtotal distal,Gastrectomia
+Estomago,Gastrectomia proximal,Gastrectomia
+Estomago,Linfadenectomia D2,Linfadenectomia
+Estomago,Linfadenectomia D1+,Linfadenectomia
+Estomago,Gastrectomia laparoscopica / robotica,Cirugia minimo invasiva
+Estomago,Reseccion endoscopica mucosa (EMR),Endoscopica
+Estomago,Diseccion endoscopica submucosa (ESD),Endoscopica
+Higado / vias biliares,Reseccion hepatica menor (<3 segmentos),Hepatectomia
+Higado / vias biliares,Hepatectomia mayor (>=3 segmentos),Hepatectomia
+Higado / vias biliares,Hepatectomia derecha,Hepatectomia
+Higado / vias biliares,Hepatectomia izquierda,Hepatectomia
+Higado / vias biliares,Trisegmentectomia derecha,Hepatectomia
+Higado / vias biliares,Segmentectomia hepatica,Hepatectomia
+Higado / vias biliares,ALPPS (asociada a particion portal),Hepatectomia
+Higado / vias biliares,Trasplante hepatico ortotopico,Trasplante
+Higado / vias biliares,Ablacion por radiofrecuencia (RFA),Ablacion
+Higado / vias biliares,Ablacion por microondas (MWA),Ablacion
+Higado / vias biliares,Quimioembolizacion transarterial (TACE),Intervencionismo
+Higado / vias biliares,Radioembolizacion con Y-90 (TARE),Intervencionismo
+Higado / vias biliares,Colecistectomia oncologica + hepatectomia IVb/V,Vesicula
+Higado / vias biliares,Reseccion de hilio biliar (Klatskin) + hepatectomia,Vias biliares
+Pancreas,Pancreatoduodenectomia (Whipple),Pancreatectomia
+Pancreas,Whipple con preservacion de piloro (PPPD),Pancreatectomia
+Pancreas,Pancreatectomia distal +/- esplenectomia,Pancreatectomia
+Pancreas,Pancreatectomia total,Pancreatectomia
+Pancreas,Pancreatectomia central,Pancreatectomia
+Pancreas,Enucleacion pancreatica (NET pequeno),Pancreatectomia
+Pancreas,Pancreatectomia laparoscopica / robotica,Cirugia minimo invasiva
+Colorrectal,Hemicolectomia derecha,Colectomia
+Colorrectal,Hemicolectomia derecha extendida,Colectomia
+Colorrectal,Hemicolectomia izquierda,Colectomia
+Colorrectal,Colectomia transversa,Colectomia
+Colorrectal,Sigmoidectomia,Colectomia
+Colorrectal,Colectomia total,Colectomia
+Colorrectal,Colectomia subtotal,Colectomia
+Colorrectal,Colectomia laparoscopica / robotica,Cirugia minimo invasiva
+Colorrectal,Reseccion anterior baja (LAR),Reseccion rectal
+Colorrectal,Reseccion anterior ultra-baja con anastomosis coloanal,Reseccion rectal
+Colorrectal,Excision total del mesorrecto (TME),Reseccion rectal
+Colorrectal,Reseccion abdominoperineal (Miles),Reseccion rectal
+Colorrectal,Reseccion local transanal (TEM / TAMIS),Reseccion rectal
+Colorrectal,Polipectomia endoscopica,Endoscopica
+Colorrectal,Diseccion endoscopica submucosa (ESD),Endoscopica
+Colorrectal,Citoreduccion + HIPEC,Peritoneo
+Colorrectal,Hepatectomia por metastasis colorrectal,Metastasectomia
+Anal / apendice,Reseccion local de canal anal,Anal
+Anal / apendice,Reseccion abdominoperineal por canal anal,Anal
+Anal / apendice,Apendicectomia oncologica,Apendice
+Anal / apendice,Hemicolectomia derecha por neoplasia apendicular,Apendice
+Anal / apendice,Citorreduccion peritoneal completa (CCR-0/1),Peritoneo
+Anal / apendice,HIPEC (mitomicina / oxaliplatino),Peritoneo
+Ginecologico,Histerectomia simple total,Histerectomia
+Ginecologico,Histerectomia total laparoscopica / robotica,Histerectomia
+Ginecologico,Histerectomia radical (Wertheim-Meigs),Histerectomia
+Ginecologico,Traquelectomia radical (preserva fertilidad),Cervix
+Ginecologico,Conizacion cervical (LEEP / cono frio),Cervix
+Ginecologico,Salpingooforectomia bilateral,Anexos
+Ginecologico,Linfadenectomia pelvica,Linfadenectomia
+Ginecologico,Linfadenectomia paraaortica,Linfadenectomia
+Ginecologico,Biopsia de ganglio centinela cervical / endometrio,Linfadenectomia
+Ginecologico,Citorreduccion ovarica primaria,Ovario
+Ginecologico,Citorreduccion ovarica de intervalo,Ovario
+Ginecologico,Citorreduccion + HIPEC ovarico,Ovario
+Ginecologico,Omentectomia infracolica / total,Ovario
+Ginecologico,Vulvectomia simple,Vulva
+Ginecologico,Vulvectomia radical,Vulva
+Ginecologico,Linfadenectomia inguinofemoral,Vulva
+Ginecologico,Exenteracion pelvica anterior / posterior / total,Pelvis
+Urologico,Prostatectomia radical retropubica,Prostatectomia
+Urologico,Prostatectomia radical laparoscopica,Prostatectomia
+Urologico,Prostatectomia radical robotica (RARP),Prostatectomia
+Urologico,Linfadenectomia pelvica extendida,Linfadenectomia
+Urologico,Nefrectomia radical,Renal
+Urologico,Nefrectomia parcial,Renal
+Urologico,Nefrectomia laparoscopica / robotica,Renal
+Urologico,Nefrectomia citorreductora,Renal
+Urologico,Nefroureterectomia radical,Urotelial
+Urologico,Cistectomia radical + derivacion urinaria,Vejiga
+Urologico,Cistectomia parcial,Vejiga
+Urologico,Reseccion transuretral de tumor vesical (RTU-V),Vejiga
+Urologico,Instilacion intravesical BCG / mitomicina,Vejiga
+Urologico,Orquiectomia radical inguinal,Testiculo
+Urologico,Linfadenectomia retroperitoneal (RPLND),Testiculo
+Urologico,Penectomia parcial,Pene
+Urologico,Penectomia total + uretrostomia perineal,Pene
+Urologico,Linfadenectomia inguinal (Daseler),Pene
+Urologico,Adrenalectomia laparoscopica,Suprarrenal
+Urologico,Adrenalectomia abierta,Suprarrenal
+SNC,Craneotomia + reseccion de tumor cerebral,Neurocirugia
+SNC,Reseccion despierto con mapeo cortical,Neurocirugia
+SNC,Biopsia estereotactica de lesion cerebral,Neurocirugia
+SNC,Lobectomia cerebral oncologica,Neurocirugia
+SNC,Reseccion de tumor de fosa posterior,Neurocirugia
+SNC,Radiocirugia estereotactica (Gamma Knife / CyberKnife),Radiocirugia
+SNC,Reseccion de meningioma,Neurocirugia
+SNC,Reseccion transesfenoidal de adenoma hipofisiario,Neurocirugia
+SNC,Laminectomia + reseccion de tumor medular,Columna
+Sarcoma / partes blandas,Reseccion amplia de sarcoma de partes blandas,Sarcoma
+Sarcoma / partes blandas,Cirugia compartmental,Sarcoma
+Sarcoma / partes blandas,Amputacion oncologica de extremidad,Sarcoma
+Sarcoma / partes blandas,Hemipelvectomia interna,Sarcoma
+Sarcoma / partes blandas,Hemipelvectomia externa,Sarcoma
+Sarcoma / partes blandas,Reseccion oseo-tumoral + endoprotesis,Hueso
+Sarcoma / partes blandas,Reseccion de GIST gastrico / intestinal,GIST
+Sarcoma / partes blandas,Perfusion aislada de extremidad (ILP) con TNF/melfalan,Sarcoma
+Piel / melanoma,Escision local amplia con margenes (1-2 cm),Melanoma
+Piel / melanoma,Escision con margenes Mohs,Piel
+Piel / melanoma,Biopsia de ganglio centinela,Linfadenectomia
+Piel / melanoma,Linfadenectomia regional terapeutica,Linfadenectomia
+Piel / melanoma,Metastasectomia cutanea,Melanoma
+Hematologico,Trasplante autologo de progenitores hematopoyeticos (TAPH),Trasplante
+Hematologico,Trasplante alogenico de medula osea,Trasplante
+Hematologico,Esplenectomia oncologica,Bazo
+Hematologico,Biopsia ganglionar excisional diagnostica,Diagnostica
+Hematologico,Aspirado y biopsia de medula osea,Diagnostica
+Diagnostica / paliativa,Biopsia incisional de tumor,Diagnostica
+Diagnostica / paliativa,Biopsia con aguja gruesa (TruCut) guiada por imagen,Diagnostica
+Diagnostica / paliativa,Biopsia BACAF (citologia),Diagnostica
+Diagnostica / paliativa,Laparoscopia diagnostica de estadificacion,Diagnostica
+Diagnostica / paliativa,Toracoscopia diagnostica (VATS),Diagnostica
+Diagnostica / paliativa,Colocacion de cateter venoso central (port-a-cath),Soporte
+Diagnostica / paliativa,Colocacion de PICC,Soporte
+Diagnostica / paliativa,Gastrostomia / yeyunostomia de alimentacion,Soporte
+Diagnostica / paliativa,Colostomia derivativa paliativa,Paliativa
+Diagnostica / paliativa,Ileostomia derivativa,Paliativa
+Diagnostica / paliativa,Stent endoluminal (esofagico, biliar, colonico, traqueal),Paliativa
+Diagnostica / paliativa,Drenaje biliar percutaneo (PTC),Paliativa
+Diagnostica / paliativa,Nefrostomia percutanea,Paliativa
+Diagnostica / paliativa,Toracocentesis / paracentesis evacuadora,Paliativa
+Diagnostica / paliativa,Ablacion percutanea de metastasis (RFA / MWA / crio),Ablacion
+Diagnostica / paliativa,Vertebroplastia / cifoplastia,Paliativa
+Otro,Otro procedimiento (especificar en notas),Otro

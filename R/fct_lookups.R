@@ -60,6 +60,35 @@ lookup_cpt <- function() {
   if (!"PROCEDURE.DESCRIPTION" %in% names(d)) return(d)
   d[!duplicated(d$PROCEDURE.DESCRIPTION), , drop = FALSE]
 }
+
+#' Curated oncology procedure list (replaces the partial CPT catalog).
+#' Source: inst/extdata/oncology_procedures.csv -- columns: site, procedure, modality.
+#' Returns a named list grouped by anatomic site for shinyWidgets::pickerInput
+#' optgroup rendering. Falls back to the flat CPT list if the CSV is missing.
+lookup_oncology_procedures <- function() {
+  if (!is.null(.cache[["oncology_procedures"]]))
+    return(.cache[["oncology_procedures"]])
+  f <- .local_extdata("oncology_procedures.csv")
+  if (!nzchar(f)) {
+    cpt <- lookup_cpt()
+    out <- if ("PROCEDURE.DESCRIPTION" %in% names(cpt))
+      sort(cpt$PROCEDURE.DESCRIPTION) else character(0)
+    .cache[["oncology_procedures"]] <- out
+    return(out)
+  }
+  d <- tryCatch(utils::read.csv(f, fileEncoding = "UTF-8",
+                                stringsAsFactors = FALSE),
+                error = function(e) NULL)
+  if (is.null(d) || !all(c("site","procedure") %in% names(d))) {
+    .cache[["oncology_procedures"]] <- character(0)
+    return(character(0))
+  }
+  out <- split(d$procedure, d$site)
+  out <- lapply(out, function(x) sort(unique(x)))
+  out <- out[order(names(out))]
+  .cache[["oncology_procedures"]] <- out
+  out
+}
 lookup_drugs <- function() {
   d <- .s3_csv("fda_active_filtered.csv")
   # keep V0.1 shape: caller does sort(lookup_drugs()$x), so map first column.
