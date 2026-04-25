@@ -101,7 +101,7 @@ mod_admin_users_server <- function(id, pool, user) {
       refresh_hospitals()
       u <- user(); if (is.null(u)) return()
       h <- pool::poolWithTransaction(pool, function(con) {
-        DBI::dbGetQuery(con, "SELECT hospital_id, code || ' — ' || name AS label
+        DBI::dbGetQuery(con, "SELECT hospital_id, code || ' \u2014 ' || name AS label
                                 FROM hospitals WHERE is_active ORDER BY code")
       })
       choices <- stats::setNames(h$hospital_id, h$label)

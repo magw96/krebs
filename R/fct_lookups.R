@@ -16,12 +16,25 @@
   ""
 }
 
+#' Strip a UTF-8 BOM from a column header (read.csv leaves it as
+#' "X.U.FEFF.<name>" which then fails an %in% names() check).
+.strip_bom <- function(df) {
+  if (length(names(df))) {
+    names(df)[1] <- sub("^\ufeff",       "", names(df)[1])
+    names(df)[1] <- sub("^X\\.U\\.FEFF\\.", "", names(df)[1])
+  }
+  df
+}
+
 .s3_csv <- function(key, bucket = "cptcode") {
   if (!is.null(.cache[[key]])) return(.cache[[key]])
   local <- .local_extdata(key)
   out <- if (nzchar(local)) {
-    tryCatch(utils::read.csv(local, colClasses = "character"),
-             error = function(e) data.frame(stringsAsFactors = FALSE))
+    tryCatch(utils::read.csv(local, colClasses = "character",
+                             fileEncoding = "UTF-8-BOM"),
+             error = function(e) tryCatch(
+               utils::read.csv(local, colClasses = "character"),
+               error = function(e) data.frame(stringsAsFactors = FALSE)))
   } else {
     tryCatch({
       raw <- aws.s3::get_object(key, bucket = bucket)
@@ -32,6 +45,7 @@
       data.frame(stringsAsFactors = FALSE)
     })
   }
+  out <- .strip_bom(out)
   .cache[[key]] <- out
   out
 }
@@ -53,20 +67,30 @@ lookup_drugs <- function() {
   d
 }
 
-#' Anatomical sites (V0.1 behaviour: ICD-O-3 + 4 explicit extremity codes).
+#' Anatomical sites: use the column header as-it-arrives so a typo or
+#' space-vs-period in the source CSV won't silently empty the list.
 lookup_sites <- function() {
   base <- character(0)
   d <- lookup_icdo3()
-  if ("Site.Description" %in% names(d)) base <- unique(d$Site.Description)
-  extras <- c("RIGHT UPPER EXTREMITY","LEFT UPPER EXTREMITY",
-              "RIGHT LOWER EXTREMITY","LEFT LOWER EXTREMITY")
-  sort(unique(c(base, extras)))
+  if (length(d) && nrow(d) > 0L) {
+    # try the canonical name first, then any column that looks site-ish
+    cands <- intersect(c("Site.Description","Site Description"), names(d))
+    if (!length(cands)) {
+      cands <- grep("site", names(d), ignore.case = TRUE, value = TRUE)
+    }
+    if (length(cands)) base <- unique(d[[cands[1]]])
+  }
+  extras <- c("EXTREMIDAD SUPERIOR DERECHA","EXTREMIDAD SUPERIOR IZQUIERDA",
+              "EXTREMIDAD INFERIOR DERECHA","EXTREMIDAD INFERIOR IZQUIERDA")
+  sort(unique(c(base[nzchar(base)], extras)))
 }
 
 lookup_oncotree <- function() {
   f <- .local_extdata("tumorlist.csv")
   if (!nzchar(f)) return(character(0))
-  x <- tryCatch(utils::read.csv(f), error = function(e) NULL)
+  x <- tryCatch(utils::read.csv(f, fileEncoding = "UTF-8-BOM"),
+                error = function(e) tryCatch(utils::read.csv(f),
+                                             error = function(e) NULL))
   if (is.null(x) || ncol(x) < 2) return(character(0))
   vals <- x[[2]]
   sort(unique(vals[nzchar(vals)]))
@@ -76,27 +100,56 @@ lookup_oncotree <- function() {
 lookup_bilateral <- function() {
   f <- .local_extdata("bilat.tumors.csv")
   if (!nzchar(f)) return(character(0))
-  x <- tryCatch(utils::read.csv(f), error = function(e) NULL)
+  x <- tryCatch(utils::read.csv(f, fileEncoding = "UTF-8-BOM"),
+                error = function(e) tryCatch(utils::read.csv(f),
+                                             error = function(e) NULL))
   if (is.null(x) || ncol(x) < 1) return(character(0))
   sort(unique(x[[1]]))
 }
 
-lookup_states <- function() {
-  if (requireNamespace("mxmaps", quietly = TRUE)) {
-    levels(as.factor(mxmaps::df_mxmunicipio_2020$state_name))
-  } else {
-    # built-in fallback so the dropdown isn't empty when mxmaps isn't installed
-    sort(c("Aguascalientes","Baja California","Baja California Sur","Campeche",
-           "Chiapas","Chihuahua","Ciudad de México","Coahuila","Colima","Durango",
-           "Estado de México","Guanajuato","Guerrero","Hidalgo","Jalisco",
-           "Michoacán","Morelos","Nayarit","Nuevo León","Oaxaca","Puebla",
-           "Querétaro","Quintana Roo","San Luis Potosí","Sinaloa","Sonora",
-           "Tabasco","Tamaulipas","Tlaxcala","Veracruz","Yucatán","Zacatecas"))
-  }
+#' Mexican states + municipios. Resolution order:
+#'   1. mxmaps package (if installed)
+#'   2. bundled inst/extdata/mx_municipios.csv
+#'   3. hardcoded 32-state fallback so the form never has an empty dropdown
+.mx_state_fallback <- function() {
+  sort(c("Aguascalientes","Baja California","Baja California Sur","Campeche",
+         "Chiapas","Chihuahua",
+         "Ciudad de M\u00e9xico","Coahuila","Colima","Durango",
+         "Estado de M\u00e9xico","Guanajuato","Guerrero","Hidalgo","Jalisco",
+         "Michoac\u00e1n","Morelos","Nayarit","Nuevo Le\u00f3n","Oaxaca","Puebla",
+         "Quer\u00e9taro","Quintana Roo","San Luis Potos\u00ed","Sinaloa","Sonora",
+         "Tabasco","Tamaulipas","Tlaxcala","Veracruz","Yucat\u00e1n","Zacatecas"))
 }
 
-lookup_municipios <- function() {
+.mx_load_csv <- function() {
+  f <- .local_extdata("mx_municipios.csv")
+  if (!nzchar(f)) return(NULL)
+  tryCatch(utils::read.csv(f, fileEncoding = "UTF-8", stringsAsFactors = FALSE),
+           error = function(e) NULL)
+}
+
+lookup_states <- function() {
   if (requireNamespace("mxmaps", quietly = TRUE)) {
-    levels(as.factor(mxmaps::df_mxmunicipio_2020$municipio_name))
-  } else character(0)
+    return(levels(as.factor(mxmaps::df_mxmunicipio_2020$state_name)))
+  }
+  d <- .mx_load_csv()
+  if (!is.null(d) && "state_name" %in% names(d)) {
+    return(sort(unique(d$state_name)))
+  }
+  .mx_state_fallback()
+}
+
+#' Municipios filtered by state. Returns ALL municipios when state is NULL/"".
+lookup_municipios <- function(state = NULL) {
+  if (requireNamespace("mxmaps", quietly = TRUE)) {
+    df <- mxmaps::df_mxmunicipio_2020
+    if (!is.null(state) && nzchar(state)) df <- df[df$state_name == state, ]
+    return(sort(unique(df$municipio_name)))
+  }
+  d <- .mx_load_csv()
+  if (is.null(d) || !"municipio_name" %in% names(d)) return(character(0))
+  if (!is.null(state) && nzchar(state) && "state_name" %in% names(d)) {
+    d <- d[d$state_name == state, , drop = FALSE]
+  }
+  sort(unique(d$municipio_name))
 }
