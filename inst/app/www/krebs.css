@@ -45,7 +45,7 @@
   .brand-link span { display: none; }
 }
 
-/* shinyWidgets radioGroupButtons inside bs4Dash (BS4) — make the
+/* shinyWidgets radioGroupButtons inside bs4Dash (BS4) -- make the
    button group span full row width without relying on the BS3-only
    .btn-group-justified class (which broke clicks). */
 .btn-group { display: inline-flex; flex-wrap: wrap; }
@@ -59,3 +59,34 @@
   background: #fff8f8;
   margin-top: 0.5rem;
 }
+
+/* Sticky submit bar - clinician always has the action button visible
+   without scrolling to the bottom of long encounter forms. */
+.krebs-sticky-submit {
+  position: sticky;
+  bottom: 0;
+  z-index: 800;
+  background: rgba(255,255,255,0.97);
+  border-top: 1px solid #e7eaf3;
+  padding: 10px 16px;
+  margin-top: 16px;
+  box-shadow: 0 -2px 6px rgba(0,0,0,0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.krebs-sticky-submit .btn-success.btn-lg { min-width: 200px; }
+.krebs-sticky-submit .kbd-hint {
+  color: #6c757d; font-size: 12.5px;
+}
+.krebs-sticky-submit .kbd-hint kbd {
+  background: #f1f3f5; border: 1px solid #ced4da; border-radius: 3px;
+  padding: 1px 5px; font-size: 11.5px; color: #1f2a44;
+}
+
+/* Make the picker dropdown a touch denser so long drug catalogs scan fast */
+.bootstrap-select .dropdown-menu li a { padding: 4px 10px; font-size: 13.5px; }
+.bootstrap-select .dropdown-menu li.selected a { background: #eef3ff; }
+

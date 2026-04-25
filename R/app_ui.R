@@ -8,12 +8,14 @@ app_ui <- function(request) {
     shiny::tags$head(
       shiny::tags$link(rel = "stylesheet", type = "text/css", href = "www/krebs.css"),
       shiny::tags$link(rel = "icon", href = "www/krebs.svg"),
+      shiny::tags$script(src = "www/krebs_shortcuts.js"),
       # Defensive: if Bootstrap leaves a stale modal-backdrop after removeModal()
       # the whole page becomes opaque/click-through-blocked. Force-hide any
       # backdrop unless an actual .modal.show is present.
       shiny::tags$style(shiny::HTML(
         ".modal-backdrop:not(.show), body:not(.modal-open) .modal-backdrop { display: none !important; }
-         body:not(.modal-open) { overflow: auto !important; padding-right: 0 !important; }"
+         body:not(.modal-open) { overflow: auto !important; padding-right: 0 !important; }
+         .kbd-flash { box-shadow: 0 0 0 4px rgba(40,167,69,0.35) !important; transition: box-shadow .2s; }"
       ))
     ),
 

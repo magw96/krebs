@@ -44,12 +44,14 @@ mod_followup_search_ui <- function(id) {
           mod_encounter_form_ui(ns("enc"),
             allowed_types = c("recurrence","treatment","followup","death")),
           shiny::div(style = "color:#c00", shiny::textOutput(ns("submit_err"))),
-          shiny::div(style = "text-align:center; margin-top:10px;",
+          shiny::div(class = "krebs-sticky-submit",
             shiny::actionButton(ns("submit"),
               shiny::tagList(shiny::icon("paper-plane"), " Agregar evento"),
-              class = "btn-success btn-lg"),
-            shiny::span(id = ns("submit_msg"), style = "display:none; margin-left:10px;",
-                        shiny::icon("spinner", class = "fa-spin"), " Procesando...")
+              class = "btn-success btn-lg krebs-submit-btn"),
+            shiny::span(id = ns("submit_msg"), style = "display:none;",
+                        shiny::icon("spinner", class = "fa-spin"), " Procesando..."),
+            shiny::span(class = "kbd-hint",
+              shiny::HTML("Atajo: <kbd>Ctrl</kbd>+<kbd>S</kbd>"))
           )
         )
       )
@@ -183,6 +185,8 @@ mod_followup_search_server <- function(id, pool, user) {
       tryCatch({
         with_tenant(pool, u, function(con) insert_encounter(con, u, vals))
         err_rv("")
+        # Drop the autosaved draft and bump the user's recents cache.
+        try(enc$on_submit_success(vals), silent = TRUE)
         shiny::showNotification("Evento agregado.", type = "message", duration = 3)
         # force refresh of timeline & history
         shiny::updateSelectizeInput(session, "search", selected = p$mrn)

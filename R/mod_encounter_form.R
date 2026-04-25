@@ -42,6 +42,9 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
   }
 
   shiny::tagList(
+    # Autosave-draft restore callout (filled in by the server when a draft
+    # exists for this user x patient x encounter_type).
+    shiny::uiOutput(ns("draft_callout")),
     bs4Dash::box(
       title = shiny::tagList(shiny::icon("notes-medical"), " Tipo de evento"),
       width = 12, collapsible = FALSE, status = "primary", solidHeader = TRUE,
@@ -255,8 +258,17 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
         shiny::conditionalPanel(
           condition = sprintf("input['%s']", ns("hormonal_therapy")),
           shiny::div(class = "ml-4",
-            shiny::textInput(ns("hormonal_drug"), "Farmaco hormonal",
-              placeholder = "Tamoxifeno, letrozol, leuprolide..."))
+            shinyWidgets::pickerInput(ns("hormonal_drug"),
+              "Farmaco(s) hormonal(es)",
+              choices = character(0), multiple = TRUE,
+              options = list(`live-search` = TRUE,
+                             `actions-box` = TRUE,
+                             `selected-text-format` = "count > 2",
+                             `none-selected-text` = "Buscar farmaco...",
+                             size = 10)),
+            shiny::textInput(ns("hormonal_drug_other"),
+              "Otro (texto libre, opcional)",
+              placeholder = "Escribe si no aparece arriba"))
         ),
         shiny::hr(),
         shinyWidgets::awesomeCheckbox(ns("targeted_therapy"),
@@ -264,8 +276,17 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
         shiny::conditionalPanel(
           condition = sprintf("input['%s']", ns("targeted_therapy")),
           shiny::div(class = "ml-4",
-            shiny::textInput(ns("targeted_drug"), "Farmaco dirigido",
-              placeholder = "Trastuzumab, imatinib, osimertinib..."))
+            shinyWidgets::pickerInput(ns("targeted_drug"),
+              "Farmaco(s) dirigido(s)",
+              choices = character(0), multiple = TRUE,
+              options = list(`live-search` = TRUE,
+                             `actions-box` = TRUE,
+                             `selected-text-format` = "count > 2",
+                             `none-selected-text` = "Buscar farmaco...",
+                             size = 10)),
+            shiny::textInput(ns("targeted_drug_other"),
+              "Otro (texto libre, opcional)",
+              placeholder = "Escribe si no aparece arriba"))
         ),
         shiny::hr(),
         shinyWidgets::awesomeCheckbox(ns("immunotherapy"),
@@ -273,8 +294,17 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
         shiny::conditionalPanel(
           condition = sprintf("input['%s']", ns("immunotherapy")),
           shiny::div(class = "ml-4",
-            shiny::textInput(ns("immuno_drug"), "Farmaco de inmunoterapia",
-              placeholder = "Pembrolizumab, nivolumab, atezolizumab..."))
+            shinyWidgets::pickerInput(ns("immuno_drug"),
+              "Farmaco(s) de inmunoterapia",
+              choices = character(0), multiple = TRUE,
+              options = list(`live-search` = TRUE,
+                             `actions-box` = TRUE,
+                             `selected-text-format` = "count > 2",
+                             `none-selected-text` = "Buscar farmaco...",
+                             size = 10)),
+            shiny::textInput(ns("immuno_drug_other"),
+              "Otro (texto libre, opcional)",
+              placeholder = "Escribe si no aparece arriba"))
         ),
         shiny::hr(),
         shinyWidgets::awesomeCheckbox(ns("radio"), "Radioterapia", FALSE),
@@ -375,12 +405,34 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # Populate selectizes server-side (memory-friendly).
+    # User helper -- coerce reactive / scalar / NULL to a list with $user_id.
+    .u <- function() if (is.function(user)) user() else user
+    .has_pool <- function() !is.null(pool) && inherits(pool, c("Pool","R6"))
+
+    # Resolve recent-values lists once per session (cheap query). Wrapped in a
+    # reactive so they refresh after submit if needed.
+    recents <- shiny::reactive({
+      u <- .u()
+      if (is.null(u) || !.has_pool()) return(list())
+      out <- list()
+      for (k in c("oncotree","primary_site","icdo3_morph",
+                  "chemo_drugs","surgery_cpt")) {
+        out[[k]] <- tryCatch(db_recent_values(pool, u, k, n = 8),
+                             error = function(e) character(0))
+      }
+      out
+    })
+
+    # Populate selectizes server-side (memory-friendly), prepending the user's
+    # "Recientes" group to the four heaviest pickers.
     shiny::observe({
+      r <- recents()
+      sites <- lookup_sites()
       shiny::updateSelectizeInput(session, "primary_site",
-        choices = lookup_sites(), server = TRUE)
+        choices = .with_recent_optgroup(sites, r$primary_site), server = TRUE)
+      onco <- lookup_oncotree()
       shiny::updateSelectizeInput(session, "oncotree",
-        choices = lookup_oncotree(), server = TRUE)
+        choices = .with_recent_optgroup(onco, r$oncotree), server = TRUE)
       icdo3 <- lookup_icdo3()
       morph_col <- intersect(c("Histology.Behavior.Description",
                                "Histology/Behavior Description"), names(icdo3))
@@ -389,19 +441,21 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
                           ignore.case = TRUE, value = TRUE)
       }
       if (length(morph_col)) {
+        morph <- sort(unique(icdo3[[morph_col[1]]]))
         shiny::updateSelectizeInput(session, "icdo3_morph",
-          choices = sort(unique(icdo3[[morph_col[1]]])),
-          server = TRUE)
+          choices = .with_recent_optgroup(morph, r$icdo3_morph), server = TRUE)
       }
       drugs <- lookup_drugs()
       if ("x" %in% names(drugs)) {
+        ch <- sort(drugs$x)
         shiny::updateSelectizeInput(session, "chemo_drugs",
-          choices = sort(drugs$x), server = TRUE)
+          choices = .with_recent_optgroup(ch, r$chemo_drugs), server = TRUE)
       }
       cpt <- lookup_cpt()
       if ("PROCEDURE.DESCRIPTION" %in% names(cpt)) {
+        cs <- sort(cpt$PROCEDURE.DESCRIPTION)
         shiny::updateSelectizeInput(session, "surgery_cpt",
-          choices = sort(cpt$PROCEDURE.DESCRIPTION), server = TRUE)
+          choices = .with_recent_optgroup(cs, r$surgery_cpt), server = TRUE)
       }
     })
 
@@ -414,6 +468,97 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
     cancer_cat <- shiny::reactive({ cancer_category(input$oncotree) })
     output$cancer_specific <- shiny::renderUI({
       cancer_specific_ui(ns, cancer_cat())
+    })
+
+    # Refresh the therapy drug pickers whenever the cancer category changes,
+    # filtered to the NCCN/ESMO drugs relevant to that category.
+    shiny::observe({
+      cat <- cancer_cat()
+      shinyWidgets::updatePickerInput(session, "hormonal_drug",
+        choices = lookup_therapy_drugs(cat, "hormonal"),
+        selected = intersect(input$hormonal_drug %||% character(0),
+                             lookup_therapy_drugs(cat, "hormonal")))
+      shinyWidgets::updatePickerInput(session, "targeted_drug",
+        choices = lookup_therapy_drugs(cat, "targeted"),
+        selected = intersect(input$targeted_drug %||% character(0),
+                             lookup_therapy_drugs(cat, "targeted")))
+      shinyWidgets::updatePickerInput(session, "immuno_drug",
+        choices = lookup_therapy_drugs(cat, "immuno"),
+        selected = intersect(input$immuno_drug %||% character(0),
+                             lookup_therapy_drugs(cat, "immuno")))
+    })
+
+    # ---- Autosave drafts ---------------------------------------------------
+    # Identify the draft slot. mrn = "" for the "register new patient" case
+    # before the user has typed an MRN.
+    draft_key <- shiny::reactive({
+      p <- if (is.function(patient)) patient() else patient
+      list(mrn = as.character(p$mrn %||% ""),
+           etype = as.character(input$encounter_type %||% ""))
+    })
+
+    draft_dismissed <- shiny::reactiveVal(FALSE)
+    draft_loaded    <- shiny::reactiveVal(FALSE)
+
+    # Restore-callout: shown when a draft exists for this slot.
+    output$draft_callout <- shiny::renderUI({
+      if (!.has_pool() || is.null(.u())) return(NULL)
+      if (isTRUE(draft_dismissed())) return(NULL)
+      k <- draft_key(); if (!nzchar(k$etype)) return(NULL)
+      d <- tryCatch(db_load_draft(pool, .u(), k$mrn, k$etype),
+                    error = function(e) NULL)
+      if (is.null(d)) return(NULL)
+      shiny::div(class = "alert alert-info py-2 d-flex align-items-center",
+        style = "gap:10px;",
+        shiny::icon("clock-rotate-left"),
+        shiny::span(sprintf("Hay un borrador guardado de este formulario (%s).",
+                            human_ago(d$updated_at))),
+        shiny::actionButton(ns("draft_restore"), "Restaurar",
+          class = "btn btn-sm btn-primary ml-auto"),
+        shiny::actionButton(ns("draft_discard"), "Descartar",
+          class = "btn btn-sm btn-outline-secondary"))
+    })
+
+    shiny::observeEvent(input$draft_restore, {
+      k <- draft_key()
+      d <- tryCatch(db_load_draft(pool, .u(), k$mrn, k$etype),
+                    error = function(e) NULL)
+      if (is.null(d) || is.null(d$payload)) return()
+      .restore_inputs(session, d$payload)
+      draft_loaded(TRUE)
+      draft_dismissed(TRUE)
+      shiny::showNotification("Borrador restaurado.",
+                              type = "message", duration = 3)
+    })
+
+    shiny::observeEvent(input$draft_discard, {
+      k <- draft_key()
+      try(db_delete_draft(pool, .u(), k$mrn, k$etype), silent = TRUE)
+      draft_dismissed(TRUE)
+    })
+
+    # Debounced autosave. Snapshots all input values, strips ephemeral keys,
+    # and upserts on change. Skipped when no DB / no user / form looks empty.
+    draft_payload <- shiny::reactive({
+      vals <- shiny::reactiveValuesToList(input)
+      # Drop non-form keys
+      drop_pat <- "^(submit|reset_form|draft_(restore|discard)|tabs?_)"
+      vals[grepl(drop_pat, names(vals))] <- NULL
+      vals
+    }) |> shiny::debounce(2000)
+
+    shiny::observe({
+      if (!.has_pool() || is.null(.u())) return()
+      k <- draft_key(); if (!nzchar(k$etype)) return()
+      payload <- draft_payload()
+      # Skip autosave for empty / brand-new forms (avoids spamming the table
+      # the moment a user opens "Registrar paciente").
+      if (.payload_is_empty(payload)) return()
+      # Cap payload size at ~64 KB to be safe.
+      json <- jsonlite::toJSON(payload, auto_unbox = TRUE,
+                               null = "null", force = TRUE)
+      if (nchar(json) > 65536) return()
+      try(db_save_draft(pool, .u(), k$mrn, k$etype, payload), silent = TRUE)
     })
 
     iv <- make_encounter_validator(input, patient)
@@ -464,11 +609,14 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
         radio            = isTRUE(input$radio),
         radio_dose_gy    = as_num(input$radio_dose_gy),
         hormonal_therapy = isTRUE(input$hormonal_therapy),
-        hormonal_drug    = nz(input$hormonal_drug),
+        hormonal_drug    = combine_drugs(input$hormonal_drug,
+                                         input$hormonal_drug_other),
         targeted_therapy = isTRUE(input$targeted_therapy),
-        targeted_drug    = nz(input$targeted_drug),
+        targeted_drug    = combine_drugs(input$targeted_drug,
+                                         input$targeted_drug_other),
         immunotherapy    = isTRUE(input$immunotherapy),
-        immuno_drug      = nz(input$immuno_drug),
+        immuno_drug      = combine_drugs(input$immuno_drug,
+                                         input$immuno_drug_other),
 
         surgery_cpt          = if (length(input$surgery_cpt)) input$surgery_cpt else NA,
         surgery_intent       = nz(input$surgery_intent),
@@ -491,8 +639,87 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
       shinyjs::reset(session$ns(""))
     }
 
-    list(values = values, iv = iv, reset = reset, input = input)
+    # Called by the parent module after a successful db_insert: drops the
+    # autosaved draft and bumps the recents cache for tracked fields.
+    on_submit_success <- function(values_list) {
+      k <- draft_key()
+      if (.has_pool() && !is.null(.u())) {
+        try(db_delete_draft(pool, .u(), k$mrn, k$etype), silent = TRUE)
+        try(db_track_recents(pool, .u(), values_list), silent = TRUE)
+      }
+      draft_dismissed(TRUE)
+    }
+
+    list(values = values, iv = iv, reset = reset, input = input,
+         on_submit_success = on_submit_success)
   })
+}
+
+# ----- autosave / recents helpers --------------------------------------------
+
+#' Build a selectize choices object that prepends "Recientes" above the
+#' full list. Returns the flat vector if there are no recents.
+.with_recent_optgroup <- function(full, recent) {
+  full <- as.character(full)
+  recent <- intersect(as.character(recent), full)
+  if (!length(recent)) return(full)
+  list(Recientes = recent, Todos = setdiff(full, recent))
+}
+
+#' Heuristic: is this payload "empty enough" that we should not autosave?
+#' A snapshot with only the auto-defaulted encounter_date counts as empty.
+.payload_is_empty <- function(payload) {
+  if (!length(payload)) return(TRUE)
+  meaningful <- payload[!names(payload) %in%
+                        c("encounter_date", "encounter_type")]
+  for (v in meaningful) {
+    if (is.null(v)) next
+    if (is.logical(v)) { if (any(v, na.rm = TRUE)) return(FALSE); next }
+    if (is.character(v)) { if (any(nzchar(v))) return(FALSE); next }
+    if (is.numeric(v))   { if (any(!is.na(v) & v != 0)) return(FALSE); next }
+    return(FALSE)
+  }
+  TRUE
+}
+
+#' Push a list of (input id -> value) pairs back into the form. Heuristic
+#' dispatch by value type, since we don't know which widget owns each id.
+.restore_inputs <- function(session, payload) {
+  for (key in names(payload)) {
+    v <- payload[[key]]
+    if (is.null(v)) next
+    if (length(v) > 1L) {
+      try(shiny::updateSelectizeInput(session, key, selected = unlist(v)),
+          silent = TRUE)
+      try(shinyWidgets::updatePickerInput(session, key, selected = unlist(v)),
+          silent = TRUE)
+      next
+    }
+    if (is.logical(v)) {
+      try(shinyWidgets::updateAwesomeCheckbox(session, key, value = isTRUE(v)),
+          silent = TRUE)
+      try(shiny::updateCheckboxInput(session, key, value = isTRUE(v)),
+          silent = TRUE)
+      next
+    }
+    if (is.numeric(v)) {
+      try(shiny::updateNumericInput(session, key, value = v), silent = TRUE)
+      next
+    }
+    sv <- as.character(v)
+    # Date-shaped strings -> dateInput; otherwise text/select fall-throughs.
+    if (grepl("^\\d{4}-\\d{2}-\\d{2}$", sv)) {
+      try(shiny::updateDateInput(session, key, value = as.Date(sv)),
+          silent = TRUE)
+    }
+    try(shiny::updateTextInput(session, key, value = sv),     silent = TRUE)
+    try(shiny::updateTextAreaInput(session, key, value = sv), silent = TRUE)
+    try(shiny::updateSelectizeInput(session, key, selected = sv),
+        silent = TRUE)
+    try(shinyWidgets::updatePickerInput(session, key, selected = sv),
+        silent = TRUE)
+    try(shiny::updateRadioButtons(session, key, selected = sv), silent = TRUE)
+  }
 }
 
 # ----- typing helpers --------------------------------------------------------
@@ -500,6 +727,15 @@ nz       <- function(x) if (is.null(x) || !nzchar(as.character(x))) NA else x
 as_int   <- function(x) if (is.null(x) || is.na(suppressWarnings(as.integer(x)))) NA_integer_ else as.integer(x)
 as_num   <- function(x) if (is.null(x) || is.na(suppressWarnings(as.numeric(x)))) NA_real_   else as.numeric(x)
 as_date  <- function(x) if (is.null(x) || is.na(x)) NA         else as.Date(x)
+
+#' Merge a multi-select picker value with a free-text "Otro" field into a
+#' single comma-separated string suitable for the existing TEXT column.
+combine_drugs <- function(picked, other) {
+  parts <- c(picked, if (!is.null(other) && nzchar(other)) trimws(other))
+  parts <- parts[nzchar(parts)]
+  if (!length(parts)) return(NA_character_)
+  paste(parts, collapse = ", ")
+}
 
 #' Merge free-text biomarkers with the cancer-specific structured list.
 #' Returns a JSON object string, or NA if both sources are empty.

@@ -134,15 +134,17 @@ mod_register_new_ui <- function(id) {
       )
     ),
 
-    shiny::hr(),
-    shiny::div(style = "text-align:center;",
+    shiny::div(class = "krebs-sticky-submit",
       shiny::actionButton(ns("submit"),
         shiny::tagList(shiny::icon("paper-plane"), " Registrar"),
-        class = "btn-success btn-lg"),
+        class = "btn-success btn-lg krebs-submit-btn"),
       shiny::span(id = ns("submit_msg"),
-                  style = "display:none; margin-left:10px;",
+                  style = "display:none;",
                   shiny::icon("spinner", class = "fa-spin"), " Procesando..."),
-      shiny::div(id = ns("ok_msg"), style = "display:none; margin-top:15px;",
+      shiny::span(class = "kbd-hint",
+        shiny::HTML("Atajo: <kbd>Ctrl</kbd>+<kbd>S</kbd>")),
+      shiny::div(id = ns("ok_msg"),
+                 style = "display:none; width:100%; text-align:center;",
         shiny::h4(shiny::icon("circle-check", style = "color:green"),
                   " Paciente registrado"),
         shiny::actionLink(ns("reset_form"), "Registrar otro paciente"))
@@ -258,6 +260,8 @@ mod_register_new_server <- function(id, pool, user) {
           # 4) initial_dx encounter
           insert_encounter(con, u, vals)
         })
+        # Drop the autosaved draft and bump the user's recents cache.
+        try(enc$on_submit_success(vals), silent = TRUE)
         shinyjs::hide("submit"); shinyjs::show("ok_msg")
       },
       error = function(e) {
