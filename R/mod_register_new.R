@@ -117,8 +117,12 @@ mod_register_new_ui <- function(id) {
                         "Moderada" = "moderada",
                         "Vigorosa" = "vigorosa"),
             selected = "ninguna", inline = TRUE)
-        ),
+        )
+      ),
 
+      # --- RIGHT column: encounter form (initial_dx) + comorbilidades ----
+      shiny::column(6,
+        mod_encounter_form_ui(ns("enc"), allowed_types = "initial_dx"),
         bs4Dash::box(
           title = shiny::tagList(shiny::icon("notes-medical"), " Comorbilidades"),
           width = 12, status = "primary", solidHeader = TRUE, collapsible = TRUE,
@@ -126,11 +130,6 @@ mod_register_new_ui <- function(id) {
             "ICD-11 (multiples)", choices = NULL, multiple = TRUE,
             options = list(placeholder = "Diabetes, hipertension, ..."))
         )
-      ),
-
-      # --- RIGHT column: encounter form (initial_dx) ---------------------
-      shiny::column(6,
-        mod_encounter_form_ui(ns("enc"), allowed_types = "initial_dx")
       )
     ),
 

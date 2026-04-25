@@ -11,12 +11,10 @@
 make_encounter_validator <- function(input, patient = function() NULL) {
   iv <- shinyvalidate::InputValidator$new()
 
-  # MRN: numeric, 4-15 digits.
-  iv$add_rule("mrn", function(value) {
-    if (!nzchar(value %||% "")) return("MRN requerido")
-    if (!grepl("^[0-9]{4,15}$", value)) return("MRN debe ser numerico (4-15 digitos)")
-    NULL
-  })
+  # NOTE: MRN is owned by the parent module (mod_register_new / mod_followup_search),
+  # not the encounter form. Validation for it lives in validate_new_patient() and
+  # in the parent gate. Do NOT add an "mrn" rule here -- the input doesn't exist
+  # in this module's namespace and would lock the validator permanently.
 
   iv$add_rule("encounter_date", shinyvalidate::sv_required("Fecha del evento requerida"))
 
