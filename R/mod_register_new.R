@@ -19,8 +19,8 @@ mod_register_new_ui <- function(id) {
              class = "text-muted"),
     shiny::fluidRow(
 
-      # --- LEFT column: identidad + estilo de vida -----------------------
-      shiny::column(6,
+      # --- TOP row: identidad (8 cols) + estilo de vida (4 cols) ---------
+      shiny::column(8,
         bs4Dash::box(
           title = shiny::tagList(shiny::icon("id-card"), " Identidad"),
           width = 12, status = "primary", solidHeader = TRUE, collapsible = FALSE,
@@ -89,8 +89,10 @@ mod_register_new_ui <- function(id) {
               shiny::textInput(ns("ocupacion"), "Ocupacion"))
           ),
           shiny::div(style = "color:#c00", shiny::textOutput(ns("identity_err")))
-        ),
+        )
+      ),
 
+      shiny::column(4,
         bs4Dash::box(
           title = shiny::tagList(shiny::icon("heart"), " Estilo de vida"),
           width = 12, status = "primary", solidHeader = TRUE, collapsible = TRUE,
@@ -120,12 +122,13 @@ mod_register_new_ui <- function(id) {
         )
       ),
 
-      # --- RIGHT column: encounter form (initial_dx) + comorbilidades ----
-      shiny::column(6,
+      # --- BOTTOM row: encounter form (initial_dx) + comorbilidades ------
+      shiny::column(12,
         mod_encounter_form_ui(ns("enc"), allowed_types = "initial_dx"),
         bs4Dash::box(
           title = shiny::tagList(shiny::icon("notes-medical"), " Comorbilidades"),
           width = 12, status = "primary", solidHeader = TRUE, collapsible = TRUE,
+          collapsed = TRUE,
           shiny::selectizeInput(ns("comorbidities"),
             "ICD-11 (multiples)", choices = NULL, multiple = TRUE,
             options = list(placeholder = "Diabetes, hipertension, ..."))
