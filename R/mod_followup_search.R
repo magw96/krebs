@@ -167,8 +167,9 @@ mod_followup_search_server <- function(id, pool, user) {
     output$submit_err <- shiny::renderText(err_rv())
 
     shiny::observe({
-      shinyjs::toggleState("submit",
-        condition = !is.null(patient()) && isTRUE(enc$iv$is_valid()))
+      # Validator is checked at submit time via enc$values(); gate only on
+      # whether a patient is loaded. Avoids the "permanently locked" bug.
+      shinyjs::toggleState("submit", condition = !is.null(patient()))
     })
 
     shiny::observeEvent(input$submit, {

@@ -184,13 +184,14 @@ mod_register_new_server <- function(id, pool, user) {
     err_rv <- shiny::reactiveVal("")
     output$identity_err <- shiny::renderText(err_rv())
 
-    # gate the submit button
+    # gate the submit button -- only the four PHI-required fields. Validator
+    # for the encounter form is checked at submit time (enc$values() returns
+    # NULL on failure, and validate_new_patient() runs MRN/dob checks).
     shiny::observe({
       ok <- nzchar(input$mrn %||% "") &&
             nzchar(input$nombre %||% "") &&
             !is.null(input$sexo) &&
-            !is.null(input$fecha_nac) &&
-            isTRUE(enc$iv$is_valid())
+            !is.null(input$fecha_nac)
       shinyjs::toggleState("submit", condition = ok)
     })
 
