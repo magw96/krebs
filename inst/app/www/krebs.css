@@ -229,6 +229,51 @@ html, body, .content-wrapper, .main-sidebar, .card, .btn,
   min-width: 320px;
 }
 
+/* ---- Encounter wizard: type-picker as cards ----------------------------- */
+/* Native shiny::radioButtons + inline=TRUE renders as <div class="shiny-options-group">
+   containing one <label class="radio-inline"> per option (each with an <input
+   type="radio"> nested). We hide the radio dot and style the label as a
+   pillbox card that toggles to navy when its radio is checked. */
+.krebs-typepicker .shiny-options-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.krebs-typepicker .radio-inline {
+  flex: 1 1 140px;
+  margin: 0 !important;
+  padding: 14px 18px !important;
+  border: 2px solid var(--krebs-primary-bg);
+  border-radius: 10px;
+  background: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2a44;
+  text-align: center;
+  cursor: pointer;
+  transition: all .15s ease-in-out;
+  position: relative;
+  user-select: none;
+}
+.krebs-typepicker .radio-inline:hover {
+  border-color: var(--krebs-primary);
+  background: var(--krebs-primary-bg);
+}
+.krebs-typepicker .radio-inline input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+/* Selected state: when the radio inside is :checked, light up the label.
+   We use the +/sibling combinator via :has() (BS5/modern browsers). */
+.krebs-typepicker .radio-inline:has(input[type="radio"]:checked) {
+  background: var(--krebs-primary);
+  border-color: var(--krebs-primary);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(13, 44, 84, 0.20);
+}
+
 /* Required-field marker (used by Tab 1) */
 .mandatory_star { color: #c00; margin-left: 2px; }
 

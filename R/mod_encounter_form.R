@@ -32,19 +32,25 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
                        value = allowed_types[1])
     )
   } else {
+    # IMPORTANT: shiny treats `choices = c(name=value)` as
+    # name -> displayed, value -> returned. Our `type_labels` is
+    # c(code = "Spanish label"), so we use choiceNames/choiceValues
+    # to make the labels Spanish but keep the saved value as the code.
+    # We use plain shiny::radioButtons (not shinyWidgets) because the
+    # latter had click-handler issues on bs4Dash (see prior task #9/#13).
     bs4Dash::box(
       title = shiny::tagList(shiny::icon("list-check"),
                              " Paso 1: \u00bfQue desea registrar?"),
       width = 12, collapsible = FALSE, status = "primary", solidHeader = TRUE,
-      shinyWidgets::radioGroupButtons(
-        inputId   = ns("encounter_type"),
-        label     = NULL,
-        choices   = type_labels[allowed_types],
-        selected  = character(0),   # force explicit pick
-        justified = TRUE,
-        size      = "lg",
-        status    = "primary",
-        individual = TRUE
+      shiny::div(class = "krebs-typepicker",
+        shiny::radioButtons(
+          inputId      = ns("encounter_type"),
+          label        = NULL,
+          choiceNames  = unname(type_labels[allowed_types]),
+          choiceValues = allowed_types,
+          selected     = character(0),
+          inline       = TRUE
+        )
       ),
       shiny::div(class = "text-muted small",
         shiny::icon("info-circle"), " ",
