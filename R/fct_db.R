@@ -118,6 +118,91 @@ db_update <- function(pool, user, table, where, set) {
 
 `%||%` <- function(a, b) if (!is.null(a) && length(a) > 0 && !is.na(a[[1]])) a else b
 
+#' Apply a clinician-justified amendment to a patient identity field or an
+#' encounter field. Wraps the actual UPDATE plus the patient_amendments INSERT
+#' plus the audit_log row in ONE transaction so partial writes are impossible.
+#'
+#' @param pool         pool object
+#' @param user         list with $user_id, $hospital_id, $role
+#' @param target_table 'patient_identifiers' or 'encounters'
+#' @param target_id    encounter_id (UUID as text), or 'identity' for patient
+#' @param mrn          patient mrn (denormalised here so we can index)
+#' @param changes      named list of new values (col_name = new_value)
+#' @param motivo       clinician-supplied reason (required, >=5 chars)
+#'
+#' @return integer number of rows updated (1 on success).
+record_amendment <- function(pool, user, target_table, target_id, mrn,
+                             changes, motivo) {
+  stopifnot(target_table %in% c("patient_identifiers","encounters"),
+            length(changes) > 0L,
+            nchar(trimws(motivo %||% "")) >= 5L)
+
+  with_tenant(pool, user, function(con) {
+    # ---- Build WHERE clause for UPDATE -------------------------------------
+    where_sql <- if (target_table == "patient_identifiers") {
+      glue::glue_sql(
+        "hospital_id = {as.integer(user$hospital_id)} AND mrn = {mrn}",
+        .con = con)
+    } else {
+      glue::glue_sql("encounter_id = {target_id}::uuid", .con = con)
+    }
+
+    # ---- Snapshot current values for the affected fields -------------------
+    cols_sql <- DBI::SQL(paste(sprintf("%s::text AS %s", names(changes), names(changes)),
+                               collapse = ", "))
+    before <- DBI::dbGetQuery(con, glue::glue_sql(
+      "SELECT {cols_sql} FROM {`target_table`} WHERE {DBI::SQL(where_sql)}",
+      target_table = target_table, cols_sql = cols_sql, .con = con
+    ))
+    if (nrow(before) == 0L) {
+      stop("record_amendment: target row not found")
+    }
+
+    # ---- UPDATE the underlying row -----------------------------------------
+    set_sql <- paste(
+      vapply(names(changes), function(k) {
+        glue::glue_sql("{`k`} = {changes[[k]]}", k = k, .con = con)
+      }, character(1)),
+      collapse = ", "
+    )
+    n <- DBI::dbExecute(con, glue::glue_sql(
+      "UPDATE {`target_table`} SET {DBI::SQL(set_sql)} WHERE {DBI::SQL(where_sql)}",
+      target_table = target_table, .con = con
+    ))
+
+    # ---- Insert one row per changed field into patient_amendments ----------
+    for (k in names(changes)) {
+      old_v <- as.character(before[[k]][1])
+      new_v <- if (is.null(changes[[k]])) NA_character_ else as.character(changes[[k]])
+      if (identical(old_v, new_v)) next   # skip no-op edits
+      DBI::dbExecute(con,
+        "INSERT INTO patient_amendments
+           (hospital_id, mrn, target_table, target_id, field_name,
+            old_value, new_value, motivo, amended_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+        params = list(
+          as.integer(user$hospital_id %||% NA_integer_),
+          as.character(mrn),
+          target_table,
+          as.character(target_id),
+          k,
+          old_v, new_v,
+          trimws(motivo),
+          as.integer(user$user_id)
+        ))
+    }
+
+    # ---- Mirror to audit_log so the global activity feed shows it too ------
+    audit_write(con, user, action = "UPDATE",
+                target_table = target_table,
+                target_id    = as.character(target_id),
+                diff         = list(before = as.list(before),
+                                    after  = changes,
+                                    motivo = motivo))
+    n
+  })
+}
+
 #' One-time bootstrap on first launch. Creates a default 'admin' user if no
 #' users exist, using the password from $KREBS_ADMIN_BOOTSTRAP_PWD. Idempotent.
 #' Also creates a default hospital row if `hospitals` is empty.

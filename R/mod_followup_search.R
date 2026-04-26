@@ -170,8 +170,12 @@ mod_followup_search_server <- function(id, pool, user, data_changed = NULL,
         error = function(e) NULL)
       if (is.null(pi_row) || nrow(pi_row) == 0) return()
       shiny::showModal(shiny::modalDialog(
-        title = paste("Editar identidad -", p$mrn),
+        title = paste("Enmendar identidad -", p$mrn),
         easyClose = TRUE, size = "m",
+        shiny::div(class = "alert alert-warning small",
+          shiny::icon("triangle-exclamation"), " ",
+          shiny::strong("Esta accion queda registrada en bitacora."),
+          " Toda enmienda requiere justificacion clinica."),
         shiny::textInput(ns("ed_nombre"), "Nombre completo",
                          value = pi_row$nombre[1]),
         shiny::selectInput(ns("ed_sexo"), "Sexo",
@@ -180,11 +184,16 @@ mod_followup_search_server <- function(id, pool, user, data_changed = NULL,
         shiny::dateInput(ns("ed_fecha_nac"), "Fecha de nacimiento",
                          value = pi_row$fecha_nac[1],
                          min = "1900-01-01", max = Sys.Date()),
+        shiny::textAreaInput(ns("ed_motivo"),
+          shiny::tagList("Motivo de la enmienda ",
+                         shiny::span(class = "text-danger", "*")),
+          rows = 2,
+          placeholder = "Ej: correccion de typo en nombre, segunda revision de identificacion"),
         shiny::div(style = "color:#c00", shiny::textOutput(ns("ed_err"))),
         footer = shiny::tagList(
           shiny::modalButton("Cancelar"),
           shiny::actionButton(ns("ed_save"),
-            shiny::tagList(shiny::icon("save"), " Guardar"),
+            shiny::tagList(shiny::icon("save"), " Guardar enmienda"),
             class = "btn-success")
         )))
     })
@@ -196,22 +205,29 @@ mod_followup_search_server <- function(id, pool, user, data_changed = NULL,
       p <- patient(); u <- user()
       if (is.null(p) || is.null(u)) return()
       nm <- trimws(input$ed_nombre %||% "")
+      mot <- trimws(input$ed_motivo %||% "")
       if (!nzchar(nm)) { ed_err_rv("El nombre no puede estar vacio."); return() }
+      if (nchar(mot) < 5L) {
+        ed_err_rv("El motivo es obligatorio (minimo 5 caracteres).")
+        return()
+      }
       tryCatch({
-        with_tenant(pool, u, function(con) {
-          DBI::dbExecute(con,
-            "UPDATE patient_identifiers
-                SET nombre = $1, sexo = $2, fecha_nac = $3
-              WHERE mrn = $4",
-            params = list(nm, input$ed_sexo, input$ed_fecha_nac, p$mrn))
-          audit_write(con, u, "UPDATE", "patient_identifiers",
-                      target_id = p$mrn,
-                      diff = list(after = list(nombre = nm, sexo = input$ed_sexo,
-                                               fecha_nac = as.character(input$ed_fecha_nac))))
-        })
+        record_amendment(
+          pool         = pool,
+          user         = u,
+          target_table = "patient_identifiers",
+          target_id    = "identity",
+          mrn          = p$mrn,
+          changes      = list(
+            nombre    = nm,
+            sexo      = input$ed_sexo,
+            fecha_nac = as.character(input$ed_fecha_nac)
+          ),
+          motivo       = mot
+        )
         ed_err_rv("")
         shiny::removeModal()
-        shiny::showNotification("Identidad actualizada.", type = "message", duration = 4)
+        shiny::showNotification("Enmienda registrada.", type = "message", duration = 4)
         # bump cross-module trigger so dashboards refresh
         if (!is.null(data_changed))
           data_changed(shiny::isolate(data_changed()) + 1L)
