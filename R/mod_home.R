@@ -70,27 +70,35 @@ mod_home_server <- function(id, pool, user, on_pick, data_changed = NULL) {
     })
 
     # ---- KPI value boxes ----------------------------------------------------
-    output$kpi_overdue <- bs4Dash::renderValueBox({
-      n <- nrow(overdue() %||% data.frame())
-      bs4Dash::valueBox(
-        value = n, subtitle = "Seguimientos vencidos",
-        icon = shiny::icon("hourglass-half"), color = "warning"
-      )
-    })
-    output$kpi_recurrence <- bs4Dash::renderValueBox({
-      n <- nrow(recur_open() %||% data.frame())
-      bs4Dash::valueBox(
-        value = n, subtitle = "Recurrencias abiertas",
-        icon = shiny::icon("triangle-exclamation"), color = "danger"
-      )
-    })
-    output$kpi_death <- bs4Dash::renderValueBox({
-      n <- nrow(deaths_open() %||% data.frame())
-      bs4Dash::valueBox(
-        value = n, subtitle = "Defunciones sin cierre",
-        icon = shiny::icon("file-circle-xmark"), color = "info"
-      )
-    })
+    # Wrapped defensively because bs4Dash::valueBox / icon names vary across
+    # versions and we don't want a single API mismatch to blank the whole tab.
+    safe_kpi <- function(n_expr, subtitle, icon_name, color) {
+      n <- tryCatch(as.integer(nrow(n_expr %||% data.frame())),
+                    error = function(e) 0L)
+      tryCatch(
+        bs4Dash::valueBox(
+          value    = n,
+          subtitle = subtitle,
+          icon     = shiny::icon(icon_name),
+          color    = color,
+          width    = 12
+        ),
+        error = function(e) {
+          message("[home] valueBox err: ", conditionMessage(e))
+          shiny::div(class = sprintf("small-box bg-%s", color),
+            shiny::div(class = "inner",
+              shiny::h3(n), shiny::p(subtitle)),
+            shiny::div(class = "icon",
+              shiny::icon(icon_name)))
+        })
+    }
+
+    output$kpi_overdue <- bs4Dash::renderValueBox(
+      safe_kpi(overdue(),     "Seguimientos vencidos",  "hourglass-half",     "warning"))
+    output$kpi_recurrence <- bs4Dash::renderValueBox(
+      safe_kpi(recur_open(),  "Recurrencias abiertas",  "triangle-exclamation","danger"))
+    output$kpi_death <- bs4Dash::renderValueBox(
+      safe_kpi(deaths_open(), "Defunciones sin cierre", "file-circle-xmark",  "info"))
 
     # ---- Tables -------------------------------------------------------------
     render_worklist <- function(reactive_df, empty_msg) {

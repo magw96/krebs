@@ -37,6 +37,8 @@ mod_admin_data_ui <- function(id) {
 mod_admin_data_server <- function(id, pool, user, data_changed = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
 
+    err_rv <- shiny::reactiveVal("")
+
     tbl <- shiny::reactive({
       # Take a dependency on the cross-module trigger (bumped on every
       # successful insert) and the local manual-refresh button.
@@ -46,18 +48,29 @@ mod_admin_data_server <- function(id, pool, user, data_changed = NULL) {
       can_full <- u$role %in% c("clinician","admin","super_admin")
       scope    <- input$scope %||% "deid"
       if (scope == "full" && !can_full) scope <- "deid"
-      if (scope == "deid") {
-        db_read(pool, u, "SELECT * FROM v_clinical_deidentified ORDER BY encounter_date DESC LIMIT 1000")
-      } else {
-        db_read(pool, u, "
-          SELECT pi.nombre, pi.mrn, pi.sexo, pi.fecha_nac,
-                 e.* FROM patient_identifiers pi
-            JOIN encounters e USING (hospital_id, mrn)
-            ORDER BY e.encounter_date DESC LIMIT 1000")
-      }
+      out <- tryCatch(
+        if (scope == "deid") {
+          db_read(pool, u, "SELECT * FROM v_clinical_deidentified
+                              ORDER BY encounter_date DESC LIMIT 1000")
+        } else {
+          db_read(pool, u, "
+            SELECT pi.nombre, pi.mrn, pi.sexo, pi.fecha_nac,
+                   e.* FROM patient_identifiers pi
+              JOIN encounters e USING (hospital_id, mrn)
+             ORDER BY e.encounter_date DESC LIMIT 1000")
+        },
+        error = function(e) {
+          msg <- conditionMessage(e)
+          message("[data] tbl err: ", msg)
+          err_rv(msg); NULL
+        })
+      if (!is.null(out)) err_rv("")
+      out
     })
 
     output$row_count <- shiny::renderText({
+      e <- err_rv()
+      if (nzchar(e)) return(paste("Error:", e))
       d <- tbl()
       if (is.null(d)) return("Inicie sesion para ver datos.")
       sprintf("Mostrando %d registros (max 1000). Ultima actualizacion: %s",
@@ -65,7 +78,13 @@ mod_admin_data_server <- function(id, pool, user, data_changed = NULL) {
     })
 
     output$tbl <- DT::renderDT({
-      d <- tbl(); if (is.null(d)) return(NULL)
+      d <- tbl()
+      if (is.null(d) || nrow(d) == 0)
+        return(DT::datatable(
+          data.frame(Mensaje = if (nzchar(err_rv())) err_rv()
+                               else "Sin datos para mostrar."),
+          rownames = FALSE, options = list(dom = "t", paging = FALSE),
+          style = "bootstrap4"))
       DT::datatable(d, rownames = FALSE, style = "bootstrap4", filter = "top",
                     options = list(scrollX = TRUE, pageLength = 25))
     })
