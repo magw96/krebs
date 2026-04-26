@@ -18,14 +18,10 @@ mod_followup_search_ui <- function(id) {
         bs4Dash::box(
           title = shiny::tagList(shiny::icon("magnifying-glass"), " Buscar paciente"),
           width = 12, status = "primary", solidHeader = TRUE,
-          shiny::selectizeInput(ns("search"), NULL, choices = NULL,
-            options = list(
-              placeholder = "MRN o nombre (>= 2 caracteres)",
-              loadThrottle = 300,
-              maxOptions = 25,
-              create = FALSE
-            )
-          ),
+          shiny::textInput(ns("q"), NULL,
+            placeholder = "MRN o nombre (>= 2 caracteres)"),
+          shiny::div(style = "max-height:240px;overflow:auto;",
+            DT::DTOutput(ns("results_tbl"))),
           shiny::uiOutput(ns("patient_card"))
         )
       ),
@@ -68,50 +64,69 @@ mod_followup_search_server <- function(id, pool, user, data_changed = NULL,
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # ---- Server-side search ------------------------------------------------
-    shiny::observe({
-      u <- user(); if (is.null(u)) return()
-      shiny::updateSelectizeInput(session, "search",
-        choices = NULL, server = TRUE,
-        options = list(
-          placeholder = "MRN o nombre (>= 2 caracteres)",
-          loadThrottle = 300,
-          load = I(""),  # we drive options below
-          maxOptions = 25
-        ))
+    # ---- Search: textInput -> debounced DB query -> DT results ------------
+    selected_mrn <- shiny::reactiveVal(NULL)
+
+    q_debounced <- shiny::debounce(shiny::reactive({ input$q %||% "" }), 300)
+
+    results <- shiny::reactive({
+      u <- user(); q <- q_debounced()
+      if (is.null(u) || nchar(q) < 2)
+        return(data.frame(mrn=character(0), display=character(0)))
+      tryCatch(search_patients(pool, u, q),
+               error = function(e) {
+                 message("[followup] search err: ", conditionMessage(e))
+                 data.frame(mrn=character(0), display=character(0))
+               })
     })
 
-    # ---- Deeplink prefill: navbar quick-search and Mis pendientes both
-    # write list(mrn, ts) into a reactiveVal. Whenever it ticks, pre-load
-    # that patient into this tab's search field so the right pane refreshes.
+    output$results_tbl <- DT::renderDT({
+      r <- results()
+      if (nrow(r) == 0) {
+        msg <- if (nchar(q_debounced()) < 2) "Escriba >= 2 caracteres."
+               else "Sin resultados."
+        return(DT::datatable(
+          data.frame(Resultados = msg),
+          rownames = FALSE, selection = "none",
+          options = list(dom = "t", paging = FALSE, ordering = FALSE),
+          style = "bootstrap4"))
+      }
+      DT::datatable(
+        data.frame(Paciente = r$display),
+        rownames = FALSE, selection = "single",
+        colnames = "",
+        options = list(dom = "t", paging = FALSE, ordering = FALSE,
+                       columnDefs = list(list(targets = 0, className = "small"))),
+        style = "bootstrap4"
+      )
+    })
+
+    shiny::observeEvent(input$results_tbl_rows_selected, {
+      r <- results(); sel <- input$results_tbl_rows_selected
+      if (length(sel) == 0L || nrow(r) == 0) return()
+      selected_mrn(r$mrn[sel])
+    })
+
+    # ---- Deeplink prefill: navbar quick-search + Mis pendientes ----------
     if (!is.null(prefill)) {
       shiny::observeEvent(prefill(), {
         u <- user(); p <- prefill()
         if (is.null(u) || is.null(p) || !nzchar(p$mrn %||% "")) return()
-        shiny::updateSelectizeInput(session, "search",
-          choices = stats::setNames(p$mrn, p$mrn),
-          selected = p$mrn, server = TRUE)
+        shiny::updateTextInput(session, "q", value = p$mrn)
+        selected_mrn(p$mrn)
       }, ignoreInit = TRUE)
     }
 
-    # Debounced query each time the user types.
-    shiny::observeEvent(input$search_search, {
-      u <- user(); if (is.null(u)) return()
-      q <- input$search_search %||% ""
-      if (nchar(q) < 2) return()
-      hits <- search_patients(pool, u, q)
-      shiny::updateSelectizeInput(session, "search",
-        choices  = stats::setNames(hits$mrn, hits$display),
-        selected = input$search,
-        server   = TRUE)
-    }, ignoreInit = TRUE)
-
     # ---- Selected patient --------------------------------------------------
     patient <- shiny::reactive({
-      mrn <- input$search
+      mrn <- selected_mrn()
       u   <- user()
       if (is.null(u) || is.null(mrn) || !nzchar(mrn)) return(NULL)
-      load_patient(pool, u, mrn)
+      tryCatch(load_patient(pool, u, mrn),
+               error = function(e) {
+                 message("[followup] load_patient err: ", conditionMessage(e))
+                 NULL
+               })
     })
 
     output$has_patient <- shiny::reactive(!is.null(patient()))
@@ -293,7 +308,7 @@ mod_followup_search_server <- function(id, pool, user, data_changed = NULL,
           sprintf("Evento agregado al expediente %s.", p$mrn),
           type = "message", duration = 4)
         # force refresh of timeline & history
-        shiny::updateSelectizeInput(session, "search", selected = p$mrn)
+        selected_mrn(p$mrn)
         enc$reset()
       }, error = function(e) {
         msg <- paste("Error:", conditionMessage(e))
@@ -307,23 +322,41 @@ mod_followup_search_server <- function(id, pool, user, data_changed = NULL,
 
 # ---- helpers ---------------------------------------------------------------
 
-#' Search patients within the user's hospital. Matches MRN exactly OR
-#' name fuzzily via trigram similarity. Returns up to 25 rows.
+#' Search patients within the user's hospital. Matches MRN as a prefix OR
+#' name via ILIKE (case-insensitive substring). Tries trigram similarity
+#' first (pg_trgm) and falls back to ILIKE if the extension is missing.
 search_patients <- function(pool, user, q) {
-  q_low <- tolower(q)
-  db_read(pool, user, "
-    SELECT mrn,
-           nombre,
-           to_char(fecha_nac,'YYYY-MM-DD') AS dob,
-           sexo,
-           similarity(lower(nombre), $1) AS sim
-      FROM patient_identifiers
-     WHERE mrn = $2
-        OR lower(nombre) % $1
-     ORDER BY (mrn = $2) DESC, sim DESC NULLS LAST
-     LIMIT 25
-  ", params = list(q_low, q)) -> rows
-  if (nrow(rows) == 0) return(data.frame(mrn=character(0), display=character(0)))
+  q_low  <- tolower(q)
+  q_like <- paste0("%", gsub("([%_])", "\\\\\\1", q_low), "%")
+
+  rows <- tryCatch(
+    db_read(pool, user, "
+      SELECT mrn, nombre,
+             to_char(fecha_nac,'YYYY-MM-DD') AS dob,
+             sexo,
+             similarity(lower(nombre), $1) AS sim
+        FROM patient_identifiers
+       WHERE hospital_id = $3
+         AND (mrn ILIKE $2 OR lower(nombre) % $1 OR lower(nombre) ILIKE $2)
+       ORDER BY (mrn = $4) DESC, sim DESC NULLS LAST
+       LIMIT 25
+    ", params = list(q_low, q_like, user$hospital_id, q)),
+    error = function(e) {
+      message("[search_patients] trigram fallback: ", conditionMessage(e))
+      db_read(pool, user, "
+        SELECT mrn, nombre,
+               to_char(fecha_nac,'YYYY-MM-DD') AS dob,
+               sexo
+          FROM patient_identifiers
+         WHERE hospital_id = $2
+           AND (mrn ILIKE $1 OR lower(nombre) ILIKE $1)
+         ORDER BY mrn ASC
+         LIMIT 25
+      ", params = list(q_like, user$hospital_id))
+    })
+
+  if (is.null(rows) || nrow(rows) == 0)
+    return(data.frame(mrn = character(0), display = character(0)))
   rows$display <- sprintf("%s -- %s (%s, %s)",
                           rows$mrn, rows$nombre, rows$dob, rows$sexo)
   rows[, c("mrn","display")]

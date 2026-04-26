@@ -29,30 +29,38 @@ mod_quick_search_ui <- function(id) {
 mod_quick_search_server <- function(id, pool, user, on_pick) {
   shiny::moduleServer(id, function(input, output, session) {
 
-    # Hydrate options server-side as the user types.
-    shiny::observeEvent(input$q_search, {
+    # Preload every patient in the user's hospital (LIMIT 5000 as a guardrail).
+    # Selectize then handles type-ahead and fuzzy match client-side, which
+    # avoids the input$q_search round-trip that doesn't exist in stock Shiny.
+    shiny::observe({
       u <- user(); if (is.null(u)) return()
-      q <- input$q_search %||% ""
-      if (nchar(q) < 2) return()
-      hits <- search_patients(pool, u, q)
-      if (nrow(hits) == 0) return()
+      pl <- tryCatch(
+        db_read(pool, u, "
+          SELECT mrn, nombre,
+                 to_char(fecha_nac,'YYYY-MM-DD') AS dob, sexo
+            FROM patient_identifiers
+           WHERE hospital_id = $1
+           ORDER BY nombre ASC
+           LIMIT 5000",
+          params = list(u$hospital_id)),
+        error = function(e) {
+          message("[quick] preload err: ", conditionMessage(e))
+          NULL
+        })
+      if (is.null(pl) || nrow(pl) == 0) return()
+      pl$display <- sprintf("%s -- %s (%s, %s)", pl$mrn, pl$nombre, pl$dob, pl$sexo)
       shiny::updateSelectizeInput(session, "q",
-        choices = stats::setNames(hits$mrn, hits$display),
-        selected = input$q,
-        server = TRUE)
-    }, ignoreInit = TRUE)
+        choices  = stats::setNames(pl$mrn, pl$display),
+        selected = character(0),
+        server   = TRUE)
+    })
 
-    # When the user picks a result, fire the callback. The parent (app_server)
-    # uses it to switch tabs and preload the picked MRN into Seguimiento.
+    # When the user picks a result, fire the callback and reset the field.
     shiny::observeEvent(input$q, {
       mrn <- input$q
       if (is.null(mrn) || !nzchar(mrn)) return()
       on_pick(mrn)
-      # Reset the navbar input so the next search starts empty. Guarded with
-      # isolate so we don't loop on the observer.
-      shiny::updateSelectizeInput(session, "q",
-        choices = character(0), selected = character(0),
-        server = TRUE)
+      shiny::updateSelectizeInput(session, "q", selected = character(0))
     }, ignoreInit = TRUE)
   })
 }
