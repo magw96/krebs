@@ -75,10 +75,12 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
     type_selector_card,
 
     # ---- Step 2: datos basicos del evento (always after type pick) ------
+    # Title is per-type ("Datos de diagnostico oncologico" for initial_dx,
+    # "Datos de la recurrencia" for recurrence, etc.) -- rendered server-side.
     shiny::conditionalPanel(condition = step2_visible_when,
     bs4Dash::box(
       title = shiny::tagList(shiny::icon("clipboard-list"),
-                             " Datos del evento"),
+                             shiny::textOutput(ns("step2_title"), inline = TRUE)),
       width = 12, collapsible = TRUE, status = "primary", solidHeader = TRUE,
       shiny::fluidRow(
         shiny::column(3,
@@ -515,10 +517,11 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
                                 value = NA, min = 0, max = 200)),
           shiny::column(4,
             shinyWidgets::pickerInput(ns("complication"), "Complicacion",
-              choices = c("Ninguna" = "ninguna",
-                          "Menor"   = "menor",
-                          "Mayor"   = "mayor"),
-              selected = "ninguna"))
+              choices = c("(sin especificar)" = "",
+                          "Ninguna"           = "ninguna",
+                          "Menor"             = "menor",
+                          "Mayor"             = "mayor"),
+              selected = ""))
         )
       )
     ),
@@ -651,6 +654,49 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
     output$tnm_str <- shiny::renderText({
       paste0(input$tnm_t %||% "?", input$tnm_n %||% "?", input$tnm_m %||% "?")
     })
+
+    # ---- Step 2 dynamic title (per encounter type) ------------------------
+    output$step2_title <- shiny::renderText({
+      switch(input$encounter_type %||% "",
+        initial_dx = " Datos de diagnostico oncologico",
+        recurrence = " Datos de la recurrencia",
+        treatment  = " Datos del tratamiento",
+        followup   = " Datos del seguimiento",
+        death      = " Datos de la defuncion",
+        " Datos del evento")
+    })
+    shiny::outputOptions(output, "step2_title", suspendWhenHidden = FALSE)
+
+    # ---- Auto-prefill downstream dates from encounter_date ---------------
+    # When the user enters the dx/event date, mirror it into surgery_date,
+    # discharge_date and death_date *only if those are still empty*. Avoids
+    # overwriting a date the clinician deliberately set, but spares them
+    # from re-typing the most common value (same day as the event).
+    # Also enforces "no date earlier than the dx date" by bumping `min`.
+    shiny::observeEvent(input$encounter_date, {
+      d <- input$encounter_date
+      if (is.null(d) || is.na(d)) return()
+
+      # Update min for downstream dates so the picker visually rejects
+      # earlier values (server still re-checks at submit time).
+      shiny::updateDateInput(session, "surgery_date",   min = d, max = Sys.Date())
+      shiny::updateDateInput(session, "discharge_date", min = d, max = Sys.Date())
+      shiny::updateDateInput(session, "death_date",     min = d, max = Sys.Date())
+
+      # Prefill the *value* only when surgery/discharge/death are still blank
+      # AND only on encounter types where it makes sense.
+      etype <- input$encounter_type %||% ""
+      if (etype %in% c("initial_dx","recurrence","treatment")) {
+        if (is.null(input$surgery_date)   || is.na(input$surgery_date))
+          shiny::updateDateInput(session, "surgery_date",   value = d)
+        if (is.null(input$discharge_date) || is.na(input$discharge_date))
+          shiny::updateDateInput(session, "discharge_date", value = d)
+      }
+      if (etype == "death") {
+        if (is.null(input$death_date) || is.na(input$death_date))
+          shiny::updateDateInput(session, "death_date", value = d)
+      }
+    }, ignoreInit = TRUE)
 
     # ---- Extra biomarkers (structured -> hidden textarea) ------------------
     extra_markers <- shiny::reactiveVal(list())

@@ -86,8 +86,9 @@ mod_followup_search_server <- function(id, pool, user, data_changed = NULL,
         msg <- if (nchar(q_debounced()) < 2) "Escriba >= 2 caracteres."
                else "Sin resultados."
         return(DT::datatable(
-          data.frame(Resultados = msg),
+          data.frame(Paciente = msg),
           rownames = FALSE, selection = "none",
+          colnames = "",
           options = list(dom = "t", paging = FALSE, ordering = FALSE),
           style = "bootstrap4"))
       }

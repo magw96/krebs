@@ -150,9 +150,14 @@ cancer_specific_ui <- function(ns, category) {
       shiny::fluidRow(
         shiny::column(6, shiny::numericInput(ns("cs_cea"), "CEA basal (ng/mL)",
           value = NA, min = 0, step = 0.1)),
+        # ICD-O-3 puts el RECTO en categoria propia (C19/C20). Aqui solo
+        # registramos LOCALIZACION dentro del COLON. Si el primario es
+        # rectal, el clinico debe elegir el codigo C19/C20 al capturar
+        # el sitio anatomico.
         shiny::column(6, shinyWidgets::pickerInput(ns("cs_site_cr"),
-          "Lateralidad",
-          choices = c("","Colon derecho","Colon izquierdo","Recto")))
+          "Lateralidad / segmento",
+          choices = c("","Colon derecho","Colon transverso",
+                      "Colon izquierdo","Sigmoides")))
       )
     ),
 
@@ -202,8 +207,9 @@ cancer_specific_ui <- function(ns, category) {
         shiny::column(6, shinyWidgets::pickerInput(ns("cs_dam"),
           "Riesgo D'Amico",
           choices = c("","Bajo","Intermedio","Alto"))),
-        shiny::column(6, shinyWidgets::awesomeCheckbox(ns("cs_castrate"),
-          "Resistente a castracion (CRPC)", FALSE))
+        shiny::column(6, shinyWidgets::pickerInput(ns("cs_castrate"),
+          "Resistente a castracion (CRPC)",
+          choices = c("","Si","No","Desconocido")))
       )
     ),
 
@@ -262,8 +268,9 @@ cancer_specific_ui <- function(ns, category) {
       shiny::column(3, shinyWidgets::pickerInput(ns("cs_clark"),
         "Nivel de Clark",
         choices = c("","I","II","III","IV","V"))),
-      shiny::column(3, shinyWidgets::awesomeCheckbox(ns("cs_ulcer"),
-        "Ulceracion", FALSE)),
+      shiny::column(3, shinyWidgets::pickerInput(ns("cs_ulcer"),
+        "Ulceracion",
+        choices = c("","Si","No","Desconocida"))),
       shiny::column(3, shinyWidgets::pickerInput(ns("cs_braf_mel"),
         "BRAF",
         choices = c("","V600E","V600K","wildtype","desconocido")))
@@ -428,8 +435,9 @@ cancer_specific_ui <- function(ns, category) {
       shiny::fluidRow(
         shiny::column(6, shinyWidgets::pickerInput(ns("cs_app_msi"), "MMR / MSI",
           choices = c("","pMMR / MSS","dMMR / MSI-H","desconocido"))),
-        shiny::column(6, shinyWidgets::awesomeCheckbox(ns("cs_app_pmp"),
-          "Pseudomixoma peritoneal", FALSE))
+        shiny::column(6, shinyWidgets::pickerInput(ns("cs_app_pmp"),
+          "Pseudomixoma peritoneal",
+          choices = c("","Si","No","Desconocido")))
       )
     ),
 
@@ -575,8 +583,9 @@ cancer_specific_ui <- function(ns, category) {
       shiny::column(4, shinyWidgets::pickerInput(ns("cs_meso_site"),
         "Sitio",
         choices = c("","Pleural","Peritoneal","Pericardio","Otro"))),
-      shiny::column(4, shinyWidgets::awesomeCheckbox(ns("cs_meso_asbest"),
-        "Exposicion a asbesto", FALSE))
+      shiny::column(4, shinyWidgets::pickerInput(ns("cs_meso_asbest"),
+        "Exposicion a asbesto",
+        choices = c("","Si","No","Desconocida")))
     ),
 
     thymoma = shiny::fluidRow(
@@ -586,8 +595,9 @@ cancer_specific_ui <- function(ns, category) {
       shiny::column(4, shinyWidgets::pickerInput(ns("cs_thy_masaoka"),
         "Masaoka-Koga",
         choices = c("","I","IIa","IIb","III","IVa","IVb"))),
-      shiny::column(4, shinyWidgets::awesomeCheckbox(ns("cs_thy_mg"),
-        "Miastenia gravis", FALSE))
+      shiny::column(4, shinyWidgets::pickerInput(ns("cs_thy_mg"),
+        "Miastenia gravis",
+        choices = c("","Si","No","Desconocida")))
     ),
 
     net = shiny::tagList(

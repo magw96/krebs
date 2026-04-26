@@ -342,9 +342,14 @@ mod_register_new_server <- function(id, pool, user, data_changed = NULL) {
           data_changed(shiny::isolate(data_changed()) + 1L)
         }
         shiny::showNotification(
-          paste0("Paciente ", input$mrn, " guardado en la base de datos."),
+          paste0("Paciente ", input$mrn,
+                 " guardado. Formulario listo para el siguiente paciente."),
           type = "message", duration = 4)
-        shinyjs::hide("submit"); shinyjs::show("ok_msg")
+        # Auto-reset EVERY field so the next patient starts with a blank
+        # canvas. No need for the user to click "Registrar otro paciente".
+        shinyjs::reset(ns(""))
+        enc$reset()
+        err_rv("")
       },
       error = function(e) {
         raw <- conditionMessage(e)
