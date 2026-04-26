@@ -440,3 +440,26 @@ html, body, .content-wrapper, .main-sidebar, .card, .btn,
 .bootstrap-select .dropdown-menu li a { padding: 4px 10px; font-size: 13.5px; }
 .bootstrap-select .dropdown-menu li.selected a { background: #eef3ff; }
 
+/* ---- Pre-auth full-page background -----------------------------------
+   While the login modal is open, hide the dashboard chrome behind a
+   solid navy gradient so the unauthenticated user never glimpses the
+   internal app layout. Uses :has() (Chrome 105+, Safari 15.4+,
+   Firefox 121+) and falls back to the default dimmed backdrop on
+   older browsers. */
+body:has(.krebs-login-card) {
+  background: linear-gradient(135deg,
+              var(--krebs-primary) 0%,
+              var(--krebs-primary-soft) 60%,
+              #1f4a82 100%) !important;
+}
+body:has(.krebs-login-card) > .wrapper,
+body:has(.krebs-login-card) .wrapper {
+  visibility: hidden !important;
+}
+/* Our solid background already covers everything, so the modal's own
+   dark backdrop becomes a redundant grey overlay -- drop it. */
+body:has(.krebs-login-card) .modal-backdrop { display: none !important; }
+/* Lift the modal up a bit on tall screens so the navy card sits in the
+   visual centre instead of feeling top-anchored. */
+body:has(.krebs-login-card) .modal-dialog { margin-top: 12vh; }
+

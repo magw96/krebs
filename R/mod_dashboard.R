@@ -26,8 +26,9 @@ mod_dashboard_ui <- function(id) {
         shiny::column(3, shiny::selectizeInput(ns("f_cancer"), "Tipo de cancer",
                                               choices = NULL, multiple = TRUE,
                                               options = list(placeholder = "Todos"))),
-        shiny::column(3, shiny::dateRangeInput(ns("f_date"), "Rango de diagnostico",
-                                               start = Sys.Date() - 365*5, end = Sys.Date(),
+        shiny::column(3, shiny::dateRangeInput(ns("f_date"),
+                                               "Rango de diagnostico (opcional)",
+                                               start = NA, end = NA,
                                                language = "es")),
         shiny::column(2, shinyWidgets::pickerInput(ns("f_sex"), "Sexo",
                                                    choices = c("M","F","Otro"),
@@ -112,13 +113,6 @@ mod_dashboard_server <- function(id, pool, user) {
     # "Sin datos" instead of "An error has occurred".
     filtered <- shiny::reactive({
       u <- user(); if (is.null(u)) return(NULL)
-      # Guard: filter inputs may not be ready on first paint.
-      if (length(input$f_date) < 2 ||
-          any(is.na(input$f_date)) ||
-          length(input$f_sex) == 0 ||
-          length(input$f_age) < 2) {
-        return(data.frame())
-      }
       tryCatch({
         where <- "WHERE encounter_type = 'initial_dx'"
         params <- list()
@@ -128,22 +122,34 @@ mod_dashboard_server <- function(id, pool, user) {
           where <<- paste(where, "AND", sub("\\$\\?", paste0("$", i), clause))
           params[[i]] <<- val
         }
-        add("encounter_date >= $?", as.character(input$f_date[1]))
-        add("encounter_date <= $?", as.character(input$f_date[2]))
+        # Date range -- optional. Apply only when both endpoints valid.
+        if (length(input$f_date) == 2 && all(!is.na(input$f_date))) {
+          add("encounter_date >= $?", as.character(input$f_date[1]))
+          add("encounter_date <= $?", as.character(input$f_date[2]))
+        }
         if (length(input$f_cancer)) {
           add("oncotree = ANY($?)", input$f_cancer)
+        }
+        # Sex -- optional. Skip filter when nothing selected (= "all").
+        if (length(input$f_sex) > 0 && length(input$f_sex) < 3) {
+          add("pi.sexo = ANY($?)", input$f_sex)
+        }
+        # Age -- only constrain when slider is moved off the full 0-100 range.
+        age_lo <- if (length(input$f_age) >= 1) as.integer(input$f_age[1]) else 0L
+        age_hi <- if (length(input$f_age) >= 2) as.integer(input$f_age[2]) else 100L
+        if (age_lo > 0L || age_hi < 100L) {
+          add("((e.encounter_date - pi.fecha_nac)/365) BETWEEN $? AND $?", age_lo)
+          # second placeholder for the same BETWEEN clause
+          i <<- i + 1L
+          where <<- sub("\\$\\?", paste0("$", i), where)
+          params[[i]] <<- age_hi
         }
         sql <- paste("
           SELECT e.*, pi.sexo, pi.fecha_nac,
                  (e.encounter_date - pi.fecha_nac)/365 AS edad_dx
             FROM encounters e
-            JOIN patient_identifiers pi USING (hospital_id, mrn)",
-          where, " AND pi.sexo = ANY($", i+1, ")",
-          " AND ((e.encounter_date - pi.fecha_nac)/365) BETWEEN $", i+2, " AND $", i+3,
-          sep = "")
-        params <- c(params, list(input$f_sex,
-                                 as.integer(input$f_age[1]),
-                                 as.integer(input$f_age[2])))
+            JOIN patient_identifiers pi USING (hospital_id, mrn) ",
+          where, sep = "")
         db_read(pool, u, sql, params = params)
       }, error = function(e) {
         message("[dashboard] filtered() error: ", conditionMessage(e))
@@ -386,7 +392,7 @@ mod_dashboard_server <- function(id, pool, user) {
     output$p_map <- plotly::renderPlotly({
       tryCatch({
         if (!requireNamespace("mxmaps", quietly = TRUE))
-          return(plot_empty_ly("mxmaps no instalado (instalar con remotes::install_github('diegovalle/mxmaps'))"))
+          return(plot_empty_ly("Mapa no disponible (mxmaps no instalado)"))
         u <- user(); if (is.null(u)) return(plot_empty_ly("Sin sesion"))
         df <- db_read(pool, u, "
           SELECT pi.estado_n AS state_name, COUNT(*) AS n
