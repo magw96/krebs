@@ -7,14 +7,40 @@
 #' click/auth handler with direct access to top-level input/output.
 
 mod_login_show <- function() {
+  ver  <- tryCatch(as.character(utils::packageVersion("krebs")),
+                   error = function(e) "0.2.0")
+  yr   <- format(Sys.Date(), "%Y")
+
   shiny::showModal(shiny::modalDialog(
-    title = shiny::tagList(shiny::icon("lock"), " Iniciar sesion"),
-    easyClose = FALSE, footer = NULL, size = "s",
-    shiny::textInput("krebs_login_user", "Usuario"),
-    shiny::passwordInput("krebs_login_pwd", "Contrasena"),
-    shiny::uiOutput("krebs_login_err"),
-    shiny::actionButton("krebs_login_btn", "Entrar", class = "btn-primary",
-                        width = "100%")
+    title = NULL, easyClose = FALSE, footer = NULL, size = "s",
+    shiny::div(class = "krebs-login-card",
+      shiny::tags$img(src = "www/krebs.svg",
+                      class = "krebs-logo", alt = "Krebs"),
+      shiny::h2(class = "krebs-app-name", "Krebs"),
+      shiny::p(class = "krebs-app-tag",
+               "Plataforma clinica de oncologia"),
+      shiny::p(class = "krebs-login-prompt",
+               "Inicie sesion para continuar"),
+      shiny::textInput("krebs_login_user", "Usuario",
+                       placeholder = "su.usuario"),
+      shiny::passwordInput("krebs_login_pwd", "Contrasena"),
+      shiny::uiOutput("krebs_login_err"),
+      shiny::actionButton("krebs_login_btn",
+        shiny::tagList(shiny::icon("right-to-bracket"), " Entrar"),
+        class = "btn-primary", width = "100%")
+    ),
+    shiny::tags$div(class = "krebs-login-footer",
+      shiny::span(class = "krebs-version",
+                  sprintf("Krebs v%s", ver)),
+      "  ",
+      shiny::HTML("&middot;"),
+      "  ",
+      shiny::span(sprintf("(c) %s", yr)),
+      shiny::span(class = "krebs-disclaimer",
+        "Uso restringido a personal autorizado. ",
+        "Datos protegidos bajo confidencialidad medica. ",
+        "Toda accion queda registrada en bitacora de auditoria.")
+    )
   ))
 }
 
