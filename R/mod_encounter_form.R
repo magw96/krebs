@@ -23,57 +23,84 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
     death       = "Defuncion"
   )
 
-  type_selector <- if (length(allowed_types) == 1L) {
-    shiny::tagList(
-      shiny::tags$div(
-        class = "alert alert-primary py-2 mb-2 text-center",
-        shiny::tags$strong(unname(type_labels[allowed_types]))
-      ),
-      shinyjs::hidden(
-        shiny::textInput(ns("encounter_type"), label = NULL,
-                         value = allowed_types[1])
-      )
+  # ---- Step 1: type selector --------------------------------------------
+  # Single-type callers (Registrar -> initial_dx) skip the wizard entirely
+  # and just stamp the value via a hidden input.
+  type_selector_card <- if (length(allowed_types) == 1L) {
+    shinyjs::hidden(
+      shiny::textInput(ns("encounter_type"), label = NULL,
+                       value = allowed_types[1])
     )
   } else {
-    shiny::radioButtons(ns("encounter_type"), label = NULL,
-      choices  = type_labels[allowed_types],
-      selected = allowed_types[1],
-      inline   = TRUE)
+    bs4Dash::box(
+      title = shiny::tagList(shiny::icon("list-check"),
+                             " Paso 1: \u00bfQue desea registrar?"),
+      width = 12, collapsible = FALSE, status = "primary", solidHeader = TRUE,
+      shinyWidgets::radioGroupButtons(
+        inputId   = ns("encounter_type"),
+        label     = NULL,
+        choices   = type_labels[allowed_types],
+        selected  = character(0),   # force explicit pick
+        justified = TRUE,
+        size      = "lg",
+        status    = "primary",
+        individual = TRUE
+      ),
+      shiny::div(class = "text-muted small",
+        shiny::icon("info-circle"), " ",
+        "Seleccione un tipo de evento para desbloquear los campos correspondientes.")
+    )
   }
+
+  # ---- Step 2 visibility: only after a type has been picked --------------
+  # For single-type callers the value is always set, so this is no-op.
+  step2_visible_when <- sprintf(
+    "typeof input['%s'] !== 'undefined' && input['%s'] !== ''",
+    ns("encounter_type"), ns("encounter_type"))
+  initial_or_recurrence <- sprintf(
+    "['initial_dx','recurrence'].indexOf(input['%s']) > -1",
+    ns("encounter_type"))
 
   shiny::tagList(
     # Autosave-draft restore callout (filled in by the server when a draft
     # exists for this user x patient x encounter_type).
     shiny::uiOutput(ns("draft_callout")),
 
-    # ---- Caracteristicas al diagnostico (merged tipo + contexto) -------
+    type_selector_card,
+
+    # ---- Step 2: datos basicos del evento (always after type pick) ------
+    shiny::conditionalPanel(condition = step2_visible_when,
     bs4Dash::box(
-      title = shiny::tagList(shiny::icon("magnifying-glass-chart"),
-                             " Caracteristicas al diagnostico"),
+      title = shiny::tagList(shiny::icon("clipboard-list"),
+                             " Datos del evento"),
       width = 12, collapsible = TRUE, status = "primary", solidHeader = TRUE,
-      type_selector,
       shiny::fluidRow(
         shiny::column(3,
           shiny::dateInput(ns("encounter_date"), "Fecha del evento",
                            value = Sys.Date(), max = Sys.Date(),
                            language = "es")),
         shiny::column(3,
+          shiny::conditionalPanel(condition = initial_or_recurrence,
           shinyWidgets::pickerInput(ns("dx_method"), "Metodo diagnostico",
             choices = c("Biopsia"      = "biopsia",
                         "Citologia"    = "citologia",
                         "Imagen"       = "imagen",
                         "Clinico"      = "clinico",
                         "Quirurgico"   = "quirurgico"),
-            selected = NULL, options = list(`live-search` = TRUE))),
+            selected = NULL, options = list(`live-search` = TRUE)))),
         shiny::column(3,
+          shiny::conditionalPanel(
+            condition = sprintf("input['%s'] == 'initial_dx'", ns("encounter_type")),
           shinyWidgets::pickerInput(ns("referral_source"), "Origen de referencia",
             choices = c("Urgencias"        = "urgencias",
                         "Consulta externa" = "consulta",
                         "Referido externo" = "referido",
                         "Tamizaje"         = "tamizaje",
                         "Auto-referido"    = "auto"),
-            selected = NULL, options = list(`live-search` = TRUE))),
+            selected = NULL, options = list(`live-search` = TRUE)))),
         shiny::column(3,
+          shiny::conditionalPanel(
+            condition = sprintf("input['%s'] != 'death'", ns("encounter_type")),
           shiny::radioButtons(ns("ecog_ps"),
             label = shiny::tagList(
               "ECOG performance status ",
@@ -100,10 +127,17 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
                 shiny::icon("circle-info"))
             ),
             choices = c("0","1","2","3","4"),
-            selected = character(0), inline = TRUE))
-      ),
-      shiny::conditionalPanel(
-        condition = sprintf("input['%s'] == 'initial_dx'", ns("encounter_type")),
+            selected = character(0), inline = TRUE)))
+      )
+    )), # closes Step-2 bs4Dash::box + Step-2 conditionalPanel
+
+    # ---- Antecedentes (only at initial diagnosis) -----------------------
+    shiny::conditionalPanel(
+      condition = sprintf("input['%s'] == 'initial_dx'", ns("encounter_type")),
+      bs4Dash::box(
+        title = shiny::tagList(shiny::icon("clipboard-user"),
+                               " Antecedentes y contexto"),
+        width = 12, collapsible = TRUE, status = "primary", solidHeader = TRUE,
         shiny::fluidRow(
           shiny::column(12,
             shinyWidgets::pickerInput(ns("imaging_at_dx"),
