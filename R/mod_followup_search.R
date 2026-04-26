@@ -137,7 +137,11 @@ mod_followup_search_server <- function(id, pool, user, data_changed = NULL,
       p <- patient(); if (is.null(p)) return(shiny::p(shiny::em("Seleccione un paciente.")))
       shiny::tagList(
         shiny::hr(),
-        shiny::h5(shiny::icon("user"), " ", shiny::strong(p$nombre)),
+        shiny::h5(shiny::icon("user"), " ", shiny::strong(p$nombre),
+                  shiny::actionLink(ns("edit_identity"),
+                    shiny::tagList(shiny::icon("pen-to-square"), " Editar"),
+                    class = "btn btn-sm btn-outline-primary",
+                    style = "margin-left:8px;")),
         shiny::tags$dl(class = "row",
           shiny::tags$dt(class = "col-5", "MRN"),         shiny::tags$dd(class = "col-7", p$mrn),
           shiny::tags$dt(class = "col-5", "Sexo"),        shiny::tags$dd(class = "col-7", p$sexo),
@@ -154,6 +158,68 @@ mod_followup_search_server <- function(id, pool, user, data_changed = NULL,
           shiny::tags$dt(class = "col-5", "Recurrencias"),shiny::tags$dd(class = "col-7", p$n_recurrencias)
         )
       )
+    })
+
+    # ---- Edit patient identity (modal) -----------------------------------
+    shiny::observeEvent(input$edit_identity, {
+      p <- patient(); u <- user()
+      if (is.null(p) || is.null(u)) return()
+      pi_row <- tryCatch(db_read(pool, u,
+        "SELECT nombre, sexo, fecha_nac FROM patient_identifiers
+          WHERE mrn = $1 LIMIT 1", params = list(p$mrn)),
+        error = function(e) NULL)
+      if (is.null(pi_row) || nrow(pi_row) == 0) return()
+      shiny::showModal(shiny::modalDialog(
+        title = paste("Editar identidad -", p$mrn),
+        easyClose = TRUE, size = "m",
+        shiny::textInput(ns("ed_nombre"), "Nombre completo",
+                         value = pi_row$nombre[1]),
+        shiny::selectInput(ns("ed_sexo"), "Sexo",
+                           choices = c("M","F","X"),
+                           selected = pi_row$sexo[1]),
+        shiny::dateInput(ns("ed_fecha_nac"), "Fecha de nacimiento",
+                         value = pi_row$fecha_nac[1],
+                         min = "1900-01-01", max = Sys.Date()),
+        shiny::div(style = "color:#c00", shiny::textOutput(ns("ed_err"))),
+        footer = shiny::tagList(
+          shiny::modalButton("Cancelar"),
+          shiny::actionButton(ns("ed_save"),
+            shiny::tagList(shiny::icon("save"), " Guardar"),
+            class = "btn-success")
+        )))
+    })
+
+    ed_err_rv <- shiny::reactiveVal("")
+    output$ed_err <- shiny::renderText(ed_err_rv())
+
+    shiny::observeEvent(input$ed_save, {
+      p <- patient(); u <- user()
+      if (is.null(p) || is.null(u)) return()
+      nm <- trimws(input$ed_nombre %||% "")
+      if (!nzchar(nm)) { ed_err_rv("El nombre no puede estar vacio."); return() }
+      tryCatch({
+        with_tenant(pool, u, function(con) {
+          DBI::dbExecute(con,
+            "UPDATE patient_identifiers
+                SET nombre = $1, sexo = $2, fecha_nac = $3
+              WHERE mrn = $4",
+            params = list(nm, input$ed_sexo, input$ed_fecha_nac, p$mrn))
+          audit_write(con, u, "UPDATE", "patient_identifiers",
+                      target_id = p$mrn,
+                      diff = list(after = list(nombre = nm, sexo = input$ed_sexo,
+                                               fecha_nac = as.character(input$ed_fecha_nac))))
+        })
+        ed_err_rv("")
+        shiny::removeModal()
+        shiny::showNotification("Identidad actualizada.", type = "message", duration = 4)
+        # bump cross-module trigger so dashboards refresh
+        if (!is.null(data_changed))
+          data_changed(shiny::isolate(data_changed()) + 1L)
+        # force patient() to refresh
+        cur <- selected_mrn(); selected_mrn(NULL); selected_mrn(cur)
+      }, error = function(e) {
+        ed_err_rv(paste("Error:", conditionMessage(e)))
+      })
     })
 
     # ---- Timeline ----------------------------------------------------------
@@ -204,10 +270,10 @@ mod_followup_search_server <- function(id, pool, user, data_changed = NULL,
         SELECT attachment_id, filename, mime, size_bytes,
                to_char(uploaded_at,'YYYY-MM-DD HH24:MI') AS uploaded_at
           FROM v_encounter_attachments_meta
-         WHERE hospital_id=$1 AND mrn=$2
+         WHERE mrn = $1
          ORDER BY uploaded_at DESC
          LIMIT 100",
-        params = list(u$hospital_id, p$mrn)),
+        params = list(p$mrn)),
         error = function(e) NULL)
     })
 
@@ -363,30 +429,32 @@ search_patients <- function(pool, user, q) {
 }
 
 load_patient <- function(pool, user, mrn) {
-  rows <- db_read(pool, user, "
-    SELECT * FROM v_patient_summary
-     WHERE hospital_id = $1 AND mrn = $2
-  ", params = list(user$hospital_id, mrn))
+  # No hospital_id filter -- RLS scopes by tenant; super_admin's
+  # hospital_id is NULL and would zero-match if filtered explicitly.
+  rows <- db_read(pool, user,
+    "SELECT * FROM v_patient_summary WHERE mrn = $1 LIMIT 1",
+    params = list(mrn))
   if (nrow(rows) == 0) return(NULL)
   p <- as.list(rows[1, ])
-  p$nombre <- db_read(pool, user, "
-    SELECT nombre FROM patient_identifiers
-     WHERE hospital_id = $1 AND mrn = $2", params = list(user$hospital_id, mrn))$nombre
-  p$min_event_date <- db_read(pool, user, "
-    SELECT MIN(encounter_date) AS d FROM encounters
-     WHERE hospital_id = $1 AND mrn = $2", params = list(user$hospital_id, mrn))$d
+  p$nombre <- db_read(pool, user,
+    "SELECT nombre FROM patient_identifiers WHERE mrn = $1 LIMIT 1",
+    params = list(mrn))$nombre
+  p$min_event_date <- db_read(pool, user,
+    "SELECT MIN(encounter_date) AS d FROM encounters WHERE mrn = $1",
+    params = list(mrn))$d
   p
 }
 
 load_encounters <- function(pool, user, mrn) {
   db_read(pool, user, "
-    SELECT encounter_date, encounter_type, tnm_t, tnm_n, tnm_m,
+    SELECT encounter_date, encounter_type, line, treatment_intent,
+           tnm_t, tnm_n, tnm_m,
            primary_site, oncotree, chemo, radio, complication,
            vital_status, notes
       FROM encounters
-     WHERE hospital_id = $1 AND mrn = $2
+     WHERE mrn = $1
      ORDER BY encounter_date ASC, created_at ASC
-  ", params = list(user$hospital_id, mrn))
+  ", params = list(mrn))
 }
 
 enc_style <- function(types) {
