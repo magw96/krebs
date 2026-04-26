@@ -85,6 +85,12 @@ app_ui <- function(request) {
         left  = "Krebs v0.2",
         right = format(Sys.Date(), "%Y")
       )
-    )
+    ),
+
+    # IMPORTANT: re-inject our theme CSS *after* dashboardPage() so it loads
+    # after bs4Dash's own stylesheets and wins the cascade. Without this,
+    # bs4Dash's inline theme strings override our `:root` custom-properties
+    # and the page renders in the default light blue.
+    shiny::tags$style(type = "text/css", shiny::HTML(inline_css))
   )
 }

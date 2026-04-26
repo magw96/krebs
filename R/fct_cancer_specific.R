@@ -666,9 +666,18 @@ cancer_specific_ui <- function(ns, category) {
   if (is.null(body)) return(NULL)
 
   bs4Dash::box(
-    title = shiny::tagList(shiny::icon("ribbon"),
-      sprintf(" Datos especificos -- %s", cancer_category_label(category))),
-    width = 12, collapsible = TRUE, status = "danger", solidHeader = TRUE,
+    title = shiny::tagList(shiny::icon("dna"),
+      sprintf(" Informacion molecular/patologica -- %s",
+              cancer_category_label(category))),
+    width = 12, collapsible = TRUE, status = "primary", solidHeader = TRUE,
+    # Tumor grade lives here -- moved out of "Caracterizacion del tumor"
+    # because it's a histopathology output, not a clinical descriptor.
+    shiny::fluidRow(
+      shiny::column(12,
+        shiny::radioButtons(ns("tumor_grade"), "Grado tumoral",
+          choices = c("G1","G2","G3","G4","GX","No aplica"),
+          selected = character(0), inline = TRUE))
+    ),
     shiny::div(class = "cancer-specific-card p-2", body)
   )
 }

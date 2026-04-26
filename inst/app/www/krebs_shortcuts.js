@@ -58,4 +58,25 @@
       }
     }
   }, true);
+
+  // ---- Bootstrap 5 tooltips --------------------------------------------------
+  // Initialise any [data-bs-toggle="tooltip"] elements that Shiny renders.
+  // We re-scan after every Shiny output update because conditionalPanels and
+  // module re-renders frequently insert new tooltip triggers.
+  function initTooltips() {
+    var bs = window.bootstrap;
+    if (!bs || !bs.Tooltip) return;
+    var nodes = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    nodes.forEach(function (el) {
+      if (!el._kbTooltip) {
+        el._kbTooltip = new bs.Tooltip(el);
+      }
+    });
+  }
+  document.addEventListener("DOMContentLoaded", initTooltips);
+  if (window.$) {
+    $(document).on("shiny:value shiny:bound shiny:visualchange", function () {
+      setTimeout(initTooltips, 50);
+    });
+  }
 })();

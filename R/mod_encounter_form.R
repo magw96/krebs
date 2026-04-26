@@ -75,7 +75,22 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
             selected = NULL, options = list(`live-search` = TRUE))),
         shiny::column(3,
           shiny::radioButtons(ns("ecog_ps"),
-            "ECOG performance status",
+            label = shiny::tagList(
+              "ECOG performance status ",
+              shiny::tags$span(
+                `data-bs-toggle` = "tooltip",
+                `data-bs-placement` = "right",
+                `data-bs-html` = "true",
+                title = paste(
+                  "0 = Asintomatico, totalmente activo.<br>",
+                  "1 = Sintomas leves, ambulatorio, trabajo ligero.<br>",
+                  "2 = Ambulatorio &gt;50% del dia, no trabaja.<br>",
+                  "3 = Encamado o en silla &gt;50% del dia.<br>",
+                  "4 = Completamente discapacitado, encamado.<br>",
+                  "5 = Muerto."),
+                style = "cursor:help; color:#0d6efd;",
+                shiny::icon("circle-info"))
+            ),
             choices = c("0","1","2","3","4"),
             selected = character(0), inline = TRUE))
       ),

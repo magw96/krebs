@@ -248,17 +248,12 @@ mod_register_new_server <- function(id, pool, user, data_changed = NULL) {
       if (length(issues) > 0) { err_rv(paste(issues, collapse = " ")); return() }
       err_rv("")
 
-      vals <- enc$values()
-      if (is.null(vals)) {
-        err_rv("Revise los campos del diagnostico inicial."); return()
-      }
-      vals$mrn         <- input$mrn
-      vals$hospital_id <- hid
-
       # Hard precondition: every multi-tenant insert needs a hospital_id.
       # Resolve through the effective_hospital_id() reactive: regular users
       # get their assigned hospital, super_admins get whatever they picked
-      # in the hospital chooser at the top of the form.
+      # in the hospital chooser at the top of the form. Resolve BEFORE we
+      # touch `vals$hospital_id` (otherwise R errors with "object 'hid' not
+      # found" and the Shiny session crashes -> "Disconnected from server").
       hid <- effective_hospital_id()
       if (is.null(hid) || is.na(hid)) {
         err_rv("Seleccione un hospital activo en la parte superior de la pagina (o pida al administrador asignarle un hospital).")
@@ -266,6 +261,13 @@ mod_register_new_server <- function(id, pool, user, data_changed = NULL) {
       }
       # Use a shadow user with the effective hospital_id for this insert.
       u_eff <- u; u_eff$hospital_id <- hid
+
+      vals <- enc$values()
+      if (is.null(vals)) {
+        err_rv("Revise los campos del diagnostico inicial."); return()
+      }
+      vals$mrn         <- input$mrn
+      vals$hospital_id <- hid
 
       message(sprintf("[register] inserting mrn=%s hospital_id=%s user=%s",
                       input$mrn, hid, u$user_id))

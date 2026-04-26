@@ -1,5 +1,50 @@
 /* Krebs V0.2 - small CSS overrides on top of bs4Dash */
 
+/* ---- Typography: Inter via Google Fonts ----------------------------- */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+html, body, .content-wrapper, .main-sidebar, .card, .btn,
+.form-control, .selectize-input, .bootstrap-select .dropdown-toggle {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+               Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  font-feature-settings: "ss01", "cv11";
+}
+.bs4Dash h1, .bs4Dash h2, .bs4Dash h3, .bs4Dash h4, .bs4Dash h5,
+.card-title, .brand-text {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* ---- Darker primary blue ------------------------------------------- */
+:root {
+  --krebs-primary:      #0d2c54;   /* darker hue of blue */
+  --krebs-primary-soft: #14365e;
+  --krebs-primary-bg:   #e8edf5;
+}
+.bg-primary,
+.card-primary.card-outline,
+.card-primary > .card-header,
+.bs4Dash .small-box.bg-primary,
+.btn-primary {
+  background-color: var(--krebs-primary) !important;
+  border-color:     var(--krebs-primary) !important;
+  color: #fff !important;
+}
+.btn-primary:hover, .btn-primary:focus {
+  background-color: var(--krebs-primary-soft) !important;
+  border-color:     var(--krebs-primary-soft) !important;
+}
+.card.card-primary { border-top-color: var(--krebs-primary) !important; }
+.text-primary, a, a:visited { color: var(--krebs-primary) !important; }
+.nav-sidebar .nav-link.active {
+  background-color: var(--krebs-primary) !important;
+  color: #fff !important;
+}
+/* Sidebar header (Krebs logo strip) */
+.main-sidebar .brand-link {
+  background-color: var(--krebs-primary) !important;
+}
+
 /* Header brand */
 .brand-link img { height: 32px; }
 
