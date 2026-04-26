@@ -56,7 +56,7 @@ app_ui <- function(request) {
           # rather than the default <span>/<div>.
           shiny::uiOutput("user_chip",
                           container = function(...)
-                            shiny::tags$li(class = "nav-item", ...))
+                            shiny::tags$li(class = "nav-item dropdown", ...))
         )
       ),
 

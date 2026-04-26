@@ -11,7 +11,7 @@ mod_quick_search_ui <- function(id) {
   # bs4Dash::dashboardHeader(rightUi=...) wraps in <ul>, so each child MUST
   # be a <li>. Wrap the selectize in a list-item with the BS4 nav-item class.
   shiny::tags$li(
-    class = "nav-item krebs-quicksearch",
+    class = "nav-item dropdown krebs-quicksearch",
     shiny::tags$label(`for` = ns("q"), class = "sr-only", "Buscar paciente"),
     shiny::selectizeInput(
       ns("q"),
