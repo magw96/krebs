@@ -20,17 +20,20 @@ Imports:
     dplyr,
     DT,
     forcats,
+    geojsonio,
     ggplot2,
     glue,
     golem (>= 0.4.1),
     htmltools,
     htmlwidgets,
     lubridate,
+    mxmaps,
     plotly,
     pool (>= 1.0.0),
     purrr,
     RPostgres (>= 1.4.0),
     scales,
+    sf,
     shiny (>= 1.8.0),
     shinycssloaders,
     shinyjs,
@@ -45,9 +48,6 @@ Imports:
     uuid
 Suggests:
     aws.s3,
-    geojsonio,
-    mxmaps,
-    sf,
     testthat (>= 3.0.0)
 Remotes:
     diegovalle/mxmaps
