@@ -17,6 +17,9 @@ mod_register_new_ui <- function(id) {
     shiny::p("Capture el expediente, datos demograficos y el ",
              "diagnostico inicial.",
              class = "text-muted"),
+    # Hospital picker: shown ONLY to super_admins (whose user row has
+    # hospital_id = NULL). Picks the tenant the new patient will belong to.
+    shiny::uiOutput(ns("hospital_picker_ui")),
     shiny::fluidRow(
 
       # --- TOP row: identidad (8 cols) + datos clinicos (4 cols) --------
@@ -160,6 +163,41 @@ mod_register_new_server <- function(id, pool, user, data_changed = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
+    # ---- Hospital picker for super_admin users ----------------------------
+    # Effective hospital_id used for all inserts on this tab. For regular
+    # users it's just their assigned hospital; for super_admins it's whatever
+    # they've picked here, defaulting to the first hospital row.
+    output$hospital_picker_ui <- shiny::renderUI({
+      u <- user(); if (is.null(u)) return(NULL)
+      if (!is.null(u$hospital_id) && !is.na(u$hospital_id)) return(NULL)
+      h <- tryCatch(
+        DBI::dbGetQuery(pool, "SELECT hospital_id, code || ' -- ' || name AS label
+                                 FROM hospitals WHERE is_active ORDER BY code"),
+        error = function(e) NULL)
+      if (is.null(h) || nrow(h) == 0) {
+        return(shiny::div(class = "alert alert-warning",
+          shiny::icon("triangle-exclamation"),
+          " No hay hospitales registrados. Cree uno en la pestana Administracion."))
+      }
+      shiny::div(class = "alert alert-info py-2",
+        shiny::icon("hospital"),
+        shiny::strong(" Hospital activo:"),
+        shiny::span(style = "display:inline-block; min-width:280px; margin-left:8px;",
+          shinyWidgets::pickerInput(ns("active_hospital"), label = NULL,
+            choices = stats::setNames(h$hospital_id, h$label),
+            options = list(`live-search` = TRUE)))
+      )
+    })
+
+    # The hospital_id we'll write rows under.
+    effective_hospital_id <- shiny::reactive({
+      u <- user(); if (is.null(u)) return(NULL)
+      if (!is.null(u$hospital_id) && !is.na(u$hospital_id)) return(u$hospital_id)
+      hid <- input$active_hospital
+      if (is.null(hid) || !nzchar(as.character(hid))) return(NULL)
+      as.integer(hid)
+    })
+
     # Populate comorbidities once at startup. Estado is preloaded in UI.
     shiny::observe({
       icd <- tryCatch(lookup_icd11(), error = function(e) NULL)
@@ -215,21 +253,25 @@ mod_register_new_server <- function(id, pool, user, data_changed = NULL) {
         err_rv("Revise los campos del diagnostico inicial."); return()
       }
       vals$mrn         <- input$mrn
-      vals$hospital_id <- u$hospital_id
+      vals$hospital_id <- hid
 
       # Hard precondition: every multi-tenant insert needs a hospital_id.
-      # Super-admins may have hospital_id = NULL, in which case we can't
-      # write rows owned by no tenant -- ask them to switch hospital first.
-      if (is.null(u$hospital_id) || is.na(u$hospital_id)) {
-        err_rv("Su usuario no tiene hospital asignado. Pida al administrador asignarle un hospital antes de registrar pacientes.")
+      # Resolve through the effective_hospital_id() reactive: regular users
+      # get their assigned hospital, super_admins get whatever they picked
+      # in the hospital chooser at the top of the form.
+      hid <- effective_hospital_id()
+      if (is.null(hid) || is.na(hid)) {
+        err_rv("Seleccione un hospital activo en la parte superior de la pagina (o pida al administrador asignarle un hospital).")
         return()
       }
+      # Use a shadow user with the effective hospital_id for this insert.
+      u_eff <- u; u_eff$hospital_id <- hid
 
       message(sprintf("[register] inserting mrn=%s hospital_id=%s user=%s",
-                      input$mrn, u$hospital_id, u$user_id))
+                      input$mrn, hid, u$user_id))
 
       tryCatch({
-        with_tenant(pool, u, function(con) {
+        with_tenant(pool, u_eff, function(con) {
           # 1) patient identifier (PHI)
           DBI::dbExecute(con,
             "INSERT INTO patient_identifiers
@@ -239,7 +281,7 @@ mod_register_new_server <- function(id, pool, user, data_changed = NULL) {
                 telefono, email, curp,
                 created_by)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)",
-            params = list(u$hospital_id, input$mrn, input$nombre,
+            params = list(hid, input$mrn, input$nombre,
                           as.character(input$fecha_nac), input$sexo,
                           input$estado_n %||% NA, input$municipio_n %||% NA,
                           input$insurance %||% NA, input$ocupacion %||% NA,
@@ -247,8 +289,8 @@ mod_register_new_server <- function(id, pool, user, data_changed = NULL) {
                           input$telefono %||% NA, input$email %||% NA,
                           input$curp %||% NA,
                           u$user_id))
-          audit_write(con, u, "INSERT", "patient_identifiers",
-                      target_id = paste(u$hospital_id, input$mrn, sep = ":"),
+          audit_write(con, u_eff, "INSERT", "patient_identifiers",
+                      target_id = paste(hid, input$mrn, sep = ":"),
                       diff = list(after = list(mrn = input$mrn,
                                                nombre = input$nombre)))
 
@@ -258,7 +300,7 @@ mod_register_new_server <- function(id, pool, user, data_changed = NULL) {
                (hospital_id, mrn, weight_kg, height_cm,
                 smoking, alcohol, physical_activity)
              VALUES ($1,$2,$3,$4,$5,$6,$7)",
-            params = list(u$hospital_id, input$mrn,
+            params = list(hid, input$mrn,
                           input$peso, input$estatura,
                           input$smoking, input$alcohol,
                           input$physical_activity %||% NA))
@@ -269,12 +311,12 @@ mod_register_new_server <- function(id, pool, user, data_changed = NULL) {
               DBI::dbExecute(con,
                 "INSERT INTO comorbidities (hospital_id, mrn, icd11_code)
                  VALUES ($1,$2,$3)",
-                params = list(u$hospital_id, input$mrn, c))
+                params = list(hid, input$mrn, c))
             }
           }
 
           # 4) initial_dx encounter
-          insert_encounter(con, u, vals)
+          insert_encounter(con, u_eff, vals)
         })
         # Drop the autosaved draft and bump the user's recents cache.
         try(enc$on_submit_success(vals), silent = TRUE)

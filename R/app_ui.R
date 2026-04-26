@@ -1,12 +1,30 @@
 #' Top-level UI. Thin shell: a bs4Dash skeleton that mounts each module.
 
 app_ui <- function(request) {
+  # Resolve the CSS so we can inline it. PCC sometimes loses the addResourcePath
+  # mapping (different working directory than dev), so an external <link>
+  # silently 404s and the theme never applies. Inlining is bulletproof.
+  css_path <- ""
+  for (cand in c(file.path("inst", "app", "www", "krebs.css"),
+                 file.path("app", "www", "krebs.css"),
+                 system.file("app", "www", "krebs.css", package = "krebs"))) {
+    if (nzchar(cand) && file.exists(cand)) { css_path <- cand; break }
+  }
+  inline_css <- if (nzchar(css_path)) {
+    paste(readLines(css_path, warn = FALSE, encoding = "UTF-8"),
+          collapse = "\n")
+  } else ""
+
   shiny::tagList(
     # shinyjs MUST be initialised at the very top of the document so that
     # toggleState/show/hide/reset calls in modules find their JS hook.
     shinyjs::useShinyjs(),
     shiny::tags$head(
+      # Keep the external link as a fallback (it will load if the resource
+      # path is registered), and ALSO inline the file so the theme always
+      # applies even when the static asset 404s.
       shiny::tags$link(rel = "stylesheet", type = "text/css", href = "www/krebs.css"),
+      shiny::tags$style(type = "text/css", shiny::HTML(inline_css)),
       shiny::tags$link(rel = "icon", href = "www/krebs.svg"),
       shiny::tags$script(src = "www/krebs_shortcuts.js"),
       # Defensive: if Bootstrap leaves a stale modal-backdrop after removeModal()
