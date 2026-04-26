@@ -362,7 +362,10 @@ mod_followup_search_server <- function(id, pool, user, data_changed = NULL,
       vals <- enc$values()
       if (is.null(vals)) { err_rv("Revise los campos del evento."); return() }
       vals$mrn         <- p$mrn
-      vals$hospital_id <- u$hospital_id
+      # Super_admin has u$hospital_id == NULL; fall back to the patient's
+      # hospital so the NOT NULL constraint on encounters.hospital_id is
+      # satisfied. Regular users always have their own hospital_id set.
+      vals$hospital_id <- u$hospital_id %||% p$hospital_id
 
       shinyjs::disable("submit"); shinyjs::show("submit_msg")
       on.exit({ shinyjs::enable("submit"); shinyjs::hide("submit_msg") }, add = TRUE)

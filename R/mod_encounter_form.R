@@ -136,6 +136,30 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
             ),
             choices = c("0","1","2","3","4"),
             selected = character(0), inline = TRUE)))
+      ),
+      # ---- Death-specific block (cause classification) ------------------
+      # When this encounter is a death, the encounter_date IS the death
+      # date and vital_status is implicitly 'muerto' (set server-side at
+      # submit). The clinician only needs to classify the cause as
+      # related vs unrelated to the cancer + a free-text detail. Avoids
+      # the redundant "Estado vital" box for death encounters.
+      shiny::conditionalPanel(
+        condition = sprintf("input['%s'] == 'death'", ns("encounter_type")),
+        shiny::hr(),
+        shiny::fluidRow(
+          shiny::column(5,
+            shinyWidgets::pickerInput(ns("death_relation"),
+              "Relacion con la enfermedad oncologica",
+              choices = c("(seleccione)"        = "",
+                          "Relacionada"         = "relacionada",
+                          "No relacionada"      = "no_relacionada",
+                          "Desconocida"         = "desconocida"),
+              selected = "")),
+          shiny::column(7,
+            shiny::textInput(ns("death_cause_detail"),
+              "Causa especifica (opcional)",
+              placeholder = "Ej: progresion sistemica, sepsis, IAM, etc."))
+        )
       )
     )), # closes Step-2 bs4Dash::box + Step-2 conditionalPanel
 
@@ -526,10 +550,14 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
       )
     ),
 
-    # ---- Vital status (followup, death) --------------------------------
+    # ---- Vital status (followup ONLY) ----------------------------------
+    # For 'death' encounters the cause is captured inside the step-2 box
+    # via the structured 'death_relation' picker, and vital_status /
+    # death_date are derived server-side -- so this whole section is
+    # hidden for death to avoid the duplicated "Datos de la defuncion"
+    # + "Estado vital" boxes.
     shiny::conditionalPanel(
-      condition = sprintf("['followup','death'].indexOf(input['%s']) > -1",
-                          ns("encounter_type")),
+      condition = sprintf("input['%s'] == 'followup'", ns("encounter_type")),
       bs4Dash::box(
         title = shiny::tagList(shiny::icon("heart-pulse"), " Estado vital"),
         width = 12, collapsible = FALSE, status = "warning", solidHeader = TRUE,
@@ -542,11 +570,15 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
               selected = character(0), inline = TRUE)
           ),
           shiny::column(4,
-            shiny::dateInput(ns("death_date"), "Fecha de defuncion",
-                             value = NULL, max = Sys.Date(), language = "es")
+            shiny::conditionalPanel(
+              condition = sprintf("input['%s'] == 'muerto'", ns("vital_status")),
+              shiny::dateInput(ns("death_date"), "Fecha de defuncion",
+                               value = NULL, max = Sys.Date(), language = "es"))
           ),
           shiny::column(4,
-            shiny::textInput(ns("death_cause"), "Causa")
+            shiny::conditionalPanel(
+              condition = sprintf("input['%s'] == 'muerto'", ns("vital_status")),
+              shiny::textInput(ns("death_cause"), "Causa"))
           )
         )
       )
@@ -907,9 +939,24 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
         discharge_date       = as_date(input$discharge_date),
         complication         = nz(input$complication),
 
-        vital_status   = nz(input$vital_status),
-        death_date     = as_date(input$death_date),
-        death_cause    = nz(input$death_cause),
+        # Vital-status fields. For 'death' encounters everything is
+        # derived from the death-specific block: vital_status is
+        # implicitly 'muerto', death_date == encounter_date, and
+        # death_cause is the structured "{relation}: {detail}" string.
+        # For 'followup' the clinician may pick vivo/muerto/perdido and
+        # only when muerto fill in the date+cause fields directly.
+        vital_status   = if (isTRUE(input$encounter_type == "death"))
+                           "muerto" else nz(input$vital_status),
+        death_date     = if (isTRUE(input$encounter_type == "death"))
+                           as_date(input$encounter_date)
+                         else as_date(input$death_date),
+        death_cause    = if (isTRUE(input$encounter_type == "death")) {
+                           rel <- nz(input$death_relation)
+                           det <- nz(input$death_cause_detail)
+                           parts <- c(rel, det)
+                           parts <- parts[nzchar(parts)]
+                           if (length(parts)) paste(parts, collapse = ": ") else NA_character_
+                         } else nz(input$death_cause),
         notes          = nz(input$notes),
 
         # Treatment-line tracking (nullable; only meaningful when
