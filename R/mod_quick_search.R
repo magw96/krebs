@@ -8,9 +8,10 @@
 
 mod_quick_search_ui <- function(id) {
   ns <- shiny::NS(id)
-  # Wrapped in a span so we can inline-style it inside the header.
-  shiny::tags$span(
-    class = "krebs-quicksearch",
+  # bs4Dash::dashboardHeader(rightUi=...) wraps in <ul>, so each child MUST
+  # be a <li>. Wrap the selectize in a list-item with the BS4 nav-item class.
+  shiny::tags$li(
+    class = "nav-item krebs-quicksearch",
     shiny::tags$label(`for` = ns("q"), class = "sr-only", "Buscar paciente"),
     shiny::selectizeInput(
       ns("q"),

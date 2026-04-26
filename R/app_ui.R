@@ -51,7 +51,12 @@ app_ui <- function(request) {
         status = "primary",
         rightUi = shiny::tagList(
           mod_quick_search_ui("quick"),
-          shiny::uiOutput("user_chip", inline = TRUE)
+          # bs4Dash::dashboardHeader requires every rightUi child to be a <li>.
+          # Use a custom container so the uiOutput wrapper is itself an <li>
+          # rather than the default <span>/<div>.
+          shiny::uiOutput("user_chip",
+                          container = function(...)
+                            shiny::tags$li(class = "nav-item", ...))
         )
       ),
 

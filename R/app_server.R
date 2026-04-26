@@ -27,13 +27,16 @@ app_server <- function(input, output, session) {
   # --- Header chip ----------------------------------------------------------
   output$user_chip <- shiny::renderUI({
     u <- user_rv(); if (is.null(u)) return(NULL)
-    shiny::tags$span(
-      class = "user-chip",
-      shiny::icon("user-circle"), " ",
-      shiny::strong(u$full_name), " (",
-      shiny::tags$small(u$role), ") ",
-      shiny::actionLink(session$ns("logout"), "Cerrar sesion",
-                        icon = shiny::icon("door-open"))
+    # The uiOutput container is already <li class="nav-item"> (set in app_ui.R)
+    # so we render only the inner content here.
+    shiny::tagList(
+      shiny::tags$span(class = "user-chip",
+        shiny::icon("user-circle"), " ",
+        shiny::strong(u$full_name), " (",
+        shiny::tags$small(u$role), ") ",
+        shiny::actionLink(session$ns("logout"), "Cerrar sesion",
+                          icon = shiny::icon("door-open"))
+      )
     )
   })
 
