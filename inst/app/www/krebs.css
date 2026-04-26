@@ -15,12 +15,35 @@ html, body, .content-wrapper, .main-sidebar, .card, .btn,
   letter-spacing: -0.01em;
 }
 
-/* ---- Darker primary blue ------------------------------------------- */
+/* ---- Cohesive navy palette ----------------------------------------- */
+/* Single hue family across header, sidebar, all box statuses, buttons,
+   and links. bs4Dash boxes still use semantic statuses (primary/info/
+   success/warning/danger) so users get visual hierarchy, but every
+   status is a SHADE of the same navy rather than the rainbow defaults. */
 :root {
-  --krebs-primary:      #0d2c54;   /* darker hue of blue */
-  --krebs-primary-soft: #14365e;
+  --krebs-primary:      #0d2c54;   /* navy 900 -- header, primary boxes */
+  --krebs-primary-soft: #14365e;   /* navy 800 -- hover */
+  --krebs-info:         #2a5e8e;   /* navy 600 -- info boxes */
+  --krebs-success:      #2e7d6b;   /* desaturated teal-green for success */
+  --krebs-warning:      #b07a1f;   /* muted amber for warning */
+  --krebs-danger:       #a83232;   /* muted red for danger */
   --krebs-primary-bg:   #e8edf5;
 }
+
+/* ---- Top navbar (the bright-blue strip the user flagged) ----------- */
+.main-header.navbar,
+.main-header.navbar-primary,
+.navbar-light.navbar-primary,
+.navbar.bg-primary {
+  background-color: var(--krebs-primary) !important;
+  border-bottom-color: var(--krebs-primary-soft) !important;
+}
+.main-header.navbar .nav-link,
+.main-header.navbar .navbar-nav .nav-link {
+  color: #fff !important;
+}
+
+/* ---- Buttons + links ---------------------------------------------- */
 .bg-primary,
 .card-primary.card-outline,
 .card-primary > .card-header,
@@ -36,14 +59,73 @@ html, body, .content-wrapper, .main-sidebar, .card, .btn,
 }
 .card.card-primary { border-top-color: var(--krebs-primary) !important; }
 .text-primary, a, a:visited { color: var(--krebs-primary) !important; }
-.nav-sidebar .nav-link.active {
+
+/* ---- Sidebar ------------------------------------------------------- */
+.main-sidebar, .main-sidebar .sidebar {
   background-color: var(--krebs-primary) !important;
+}
+.main-sidebar .nav-sidebar .nav-link { color: #d8e1ee !important; }
+.main-sidebar .nav-sidebar .nav-link:hover {
+  background-color: var(--krebs-primary-soft) !important;
   color: #fff !important;
 }
-/* Sidebar header (Krebs logo strip) */
+.nav-sidebar .nav-link.active {
+  background-color: var(--krebs-primary-soft) !important;
+  color: #fff !important;
+}
 .main-sidebar .brand-link {
   background-color: var(--krebs-primary) !important;
+  border-bottom-color: var(--krebs-primary-soft) !important;
 }
+
+/* ---- Box headers: tint shades of the same navy --------------------- */
+/* bs4Dash applies .bg-<status> on .card-header for solidHeader boxes.
+   Map every semantic status onto a shade of our palette so the page
+   reads as one design language. */
+.card.card-info > .card-header,
+.card-info.card-outline-tabs > .card-header,
+.bs4Dash .small-box.bg-info,
+.bg-info, .badge.bg-info, .btn-info {
+  background-color: var(--krebs-info) !important;
+  border-color:     var(--krebs-info) !important;
+  color: #fff !important;
+}
+.card.card-info { border-top-color: var(--krebs-info) !important; }
+
+.card.card-success > .card-header,
+.bs4Dash .small-box.bg-success,
+.bg-success, .btn-success {
+  background-color: var(--krebs-success) !important;
+  border-color:     var(--krebs-success) !important;
+  color: #fff !important;
+}
+.card.card-success { border-top-color: var(--krebs-success) !important; }
+.btn-success:hover, .btn-success:focus {
+  background-color: #245f52 !important;
+  border-color:     #245f52 !important;
+}
+
+.card.card-warning > .card-header,
+.bs4Dash .small-box.bg-warning,
+.bg-warning, .btn-warning {
+  background-color: var(--krebs-warning) !important;
+  border-color:     var(--krebs-warning) !important;
+  color: #fff !important;
+}
+.card.card-warning { border-top-color: var(--krebs-warning) !important; }
+
+.card.card-danger > .card-header,
+.bs4Dash .small-box.bg-danger,
+.bg-danger, .btn-danger {
+  background-color: var(--krebs-danger) !important;
+  border-color:     var(--krebs-danger) !important;
+  color: #fff !important;
+}
+.card.card-danger { border-top-color: var(--krebs-danger) !important; }
+
+/* Box title icons stay legible against any of the above shades */
+.card-header .card-title,
+.card-header .card-tools .btn-tool { color: #fff !important; }
 
 /* Header brand */
 .brand-link img { height: 32px; }
