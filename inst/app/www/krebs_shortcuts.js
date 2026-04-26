@@ -59,19 +59,28 @@
     }
   }, true);
 
-  // ---- Bootstrap 5 tooltips --------------------------------------------------
-  // Initialise any [data-bs-toggle="tooltip"] elements that Shiny renders.
-  // We re-scan after every Shiny output update because conditionalPanels and
-  // module re-renders frequently insert new tooltip triggers.
+  // ---- Bootstrap tooltips (BS4 jQuery + BS5 vanilla) ------------------------
+  // bs4Dash ships Bootstrap 4 -> tooltips are jQuery plugins, NOT
+  // window.bootstrap.Tooltip. We try the jQuery path first (works for BS4
+  // and BS5 if jQuery shim is loaded) and fall back to the vanilla BS5
+  // constructor. Re-scan after Shiny re-renders modules.
   function initTooltips() {
+    if (window.jQuery && typeof window.jQuery.fn.tooltip === "function") {
+      try {
+        window.jQuery('[data-toggle="tooltip"], [data-bs-toggle="tooltip"]')
+          .tooltip({ html: true, container: "body" });
+        return;
+      } catch (e) { /* fall through */ }
+    }
     var bs = window.bootstrap;
-    if (!bs || !bs.Tooltip) return;
-    var nodes = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-    nodes.forEach(function (el) {
-      if (!el._kbTooltip) {
-        el._kbTooltip = new bs.Tooltip(el);
-      }
-    });
+    if (bs && bs.Tooltip) {
+      document.querySelectorAll('[data-bs-toggle="tooltip"], [data-toggle="tooltip"]')
+        .forEach(function (el) {
+          if (!el._kbTooltip) {
+            el._kbTooltip = new bs.Tooltip(el, { html: true, container: "body" });
+          }
+        });
+    }
   }
   document.addEventListener("DOMContentLoaded", initTooltips);
   if (window.$) {

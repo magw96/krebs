@@ -127,6 +127,51 @@ html, body, .content-wrapper, .main-sidebar, .card, .btn,
 .card-header .card-title,
 .card-header .card-tools .btn-tool { color: #fff !important; }
 
+/* ---- Alerts (bootstrap .alert-*) ----------------------------------- */
+/* The "Hospital activo" bar and the "Diagnostico inicial" header strip
+   both render as <div class="alert alert-info"> / alert-primary, which
+   inherit Bootstrap's bright cyan/blue. Tint them so they sit in the
+   same navy palette as the rest of the chrome. */
+.alert-primary {
+  background-color: var(--krebs-primary-bg) !important;
+  border-color:     var(--krebs-primary) !important;
+  color:            var(--krebs-primary) !important;
+}
+.alert-primary strong { color: var(--krebs-primary) !important; }
+
+.alert-info {
+  background-color: #eef3f9 !important;
+  border-color:     var(--krebs-info) !important;
+  color:            var(--krebs-info) !important;
+}
+.alert-info strong, .alert-info .fa, .alert-info .fas, .alert-info .fa-solid {
+  color: var(--krebs-info) !important;
+}
+
+/* The hospital picker sits inside .alert-info -- give it a slim
+   left-border accent and tighter padding so it reads as a context
+   selector rather than a notification. */
+.alert-info:has(.bootstrap-select) {
+  border-left: 4px solid var(--krebs-primary) !important;
+  border-radius: 4px;
+  padding: 8px 14px !important;
+}
+
+/* ---- Bootstrap tooltips (BS4 + BS5) -------------------------------- */
+.tooltip-inner {
+  background-color: var(--krebs-primary) !important;
+  color: #fff !important;
+  text-align: left !important;
+  max-width: 320px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  padding: 8px 10px;
+}
+.tooltip .arrow::before, .tooltip .tooltip-arrow::before {
+  border-right-color: var(--krebs-primary) !important;
+  border-left-color:  var(--krebs-primary) !important;
+}
+
 /* Header brand */
 .brand-link img { height: 32px; }
 

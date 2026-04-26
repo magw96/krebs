@@ -77,18 +77,26 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
           shiny::radioButtons(ns("ecog_ps"),
             label = shiny::tagList(
               "ECOG performance status ",
+              # bs4Dash ships Bootstrap 4 (jQuery tooltips) -- use both BS4
+              # `data-toggle` AND BS5 `data-bs-toggle` so this works on either
+              # framework. krebs_shortcuts.js initialises both engines.
               shiny::tags$span(
-                `data-bs-toggle` = "tooltip",
-                `data-bs-placement` = "right",
-                `data-bs-html` = "true",
-                title = paste(
-                  "0 = Asintomatico, totalmente activo.<br>",
-                  "1 = Sintomas leves, ambulatorio, trabajo ligero.<br>",
-                  "2 = Ambulatorio &gt;50% del dia, no trabaja.<br>",
-                  "3 = Encamado o en silla &gt;50% del dia.<br>",
-                  "4 = Completamente discapacitado, encamado.<br>",
-                  "5 = Muerto."),
-                style = "cursor:help; color:#0d6efd;",
+                `data-toggle`       = "tooltip",
+                `data-bs-toggle`    = "tooltip",
+                `data-placement`    = "left",
+                `data-bs-placement` = "left",
+                `data-html`         = "true",
+                `data-bs-html`      = "true",
+                title = paste0(
+                  "<div style='text-align:left'>",
+                  "<b>0</b> Asintomatico, totalmente activo<br>",
+                  "<b>1</b> Sintomas leves, ambulatorio, trabajo ligero<br>",
+                  "<b>2</b> Ambulatorio &gt;50% del dia, no trabaja<br>",
+                  "<b>3</b> Encamado o en silla &gt;50% del dia<br>",
+                  "<b>4</b> Completamente discapacitado, encamado<br>",
+                  "<b>5</b> Muerto",
+                  "</div>"),
+                style = "cursor:help; color:#0d2c54;",
                 shiny::icon("circle-info"))
             ),
             choices = c("0","1","2","3","4"),
