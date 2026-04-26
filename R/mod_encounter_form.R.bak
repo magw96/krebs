@@ -45,65 +45,43 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
     # Autosave-draft restore callout (filled in by the server when a draft
     # exists for this user x patient x encounter_type).
     shiny::uiOutput(ns("draft_callout")),
-
-    # ---- Caracteristicas al diagnostico (merged tipo + contexto) -------
     bs4Dash::box(
-      title = shiny::tagList(shiny::icon("magnifying-glass-chart"),
-                             " Caracteristicas al diagnostico"),
-      width = 12, collapsible = TRUE, status = "primary", solidHeader = TRUE,
+      title = shiny::tagList(shiny::icon("notes-medical"), " Tipo de evento"),
+      width = 12, collapsible = FALSE, status = "primary", solidHeader = TRUE,
       type_selector,
-      shiny::fluidRow(
-        shiny::column(3,
-          shiny::dateInput(ns("encounter_date"), "Fecha del evento",
-                           value = Sys.Date(), max = Sys.Date(),
-                           language = "es")),
-        shiny::column(3,
-          shinyWidgets::pickerInput(ns("dx_method"), "Metodo diagnostico",
-            choices = c("Biopsia"      = "biopsia",
-                        "Citologia"    = "citologia",
-                        "Imagen"       = "imagen",
-                        "Clinico"      = "clinico",
-                        "Quirurgico"   = "quirurgico"),
-            selected = NULL, options = list(`live-search` = TRUE))),
-        shiny::column(3,
-          shinyWidgets::pickerInput(ns("referral_source"), "Origen de referencia",
-            choices = c("Urgencias"        = "urgencias",
-                        "Consulta externa" = "consulta",
-                        "Referido externo" = "referido",
-                        "Tamizaje"         = "tamizaje",
-                        "Auto-referido"    = "auto"),
-            selected = NULL, options = list(`live-search` = TRUE))),
-        shiny::column(3,
-          shiny::radioButtons(ns("ecog_ps"),
-            label = shiny::tagList(
-              "ECOG performance status ",
-              # bs4Dash ships Bootstrap 4 (jQuery tooltips) -- use both BS4
-              # `data-toggle` AND BS5 `data-bs-toggle` so this works on either
-              # framework. krebs_shortcuts.js initialises both engines.
-              shiny::tags$span(
-                `data-toggle`       = "tooltip",
-                `data-bs-toggle`    = "tooltip",
-                `data-placement`    = "left",
-                `data-bs-placement` = "left",
-                `data-html`         = "true",
-                `data-bs-html`      = "true",
-                title = paste0(
-                  "<div style='text-align:left'>",
-                  "<b>0</b> Asintomatico, totalmente activo<br>",
-                  "<b>1</b> Sintomas leves, ambulatorio, trabajo ligero<br>",
-                  "<b>2</b> Ambulatorio &gt;50% del dia, no trabaja<br>",
-                  "<b>3</b> Encamado o en silla &gt;50% del dia<br>",
-                  "<b>4</b> Completamente discapacitado, encamado<br>",
-                  "<b>5</b> Muerto",
-                  "</div>"),
-                style = "cursor:help; color:#0d2c54;",
-                shiny::icon("circle-info"))
-            ),
-            choices = c("0","1","2","3","4"),
-            selected = character(0), inline = TRUE))
-      ),
-      shiny::conditionalPanel(
-        condition = sprintf("input['%s'] == 'initial_dx'", ns("encounter_type")),
+      shiny::dateInput(ns("encounter_date"), "Fecha del evento",
+                       value = Sys.Date(), max = Sys.Date(), language = "es")
+    ),
+
+    # ---- Diagnosis context (initial_dx only) ---------------------------
+    shiny::conditionalPanel(
+      condition = sprintf("input['%s'] == 'initial_dx'", ns("encounter_type")),
+      bs4Dash::box(
+        title = shiny::tagList(shiny::icon("magnifying-glass-chart"),
+                               " Contexto del diagnostico"),
+        width = 12, collapsible = TRUE, status = "primary", solidHeader = TRUE,
+        shiny::fluidRow(
+          shiny::column(4,
+            shiny::dateInput(ns("first_symptom_date"),
+                             "Fecha del primer sintoma",
+                             value = NULL, max = Sys.Date(), language = "es")),
+          shiny::column(4,
+            shinyWidgets::pickerInput(ns("dx_method"), "Metodo diagnostico",
+              choices = c("Biopsia"        = "biopsia",
+                          "Citologia" = "citologia",
+                          "Imagen"         = "imagen",
+                          "Clinico"   = "clinico",
+                          "Quirurgico" = "quirurgico"),
+              selected = NULL, options = list(`live-search` = TRUE))),
+          shiny::column(4,
+            shinyWidgets::pickerInput(ns("referral_source"), "Origen de referencia",
+              choices = c("Urgencias"        = "urgencias",
+                          "Consulta externa" = "consulta",
+                          "Referido externo" = "referido",
+                          "Tamizaje"         = "tamizaje",
+                          "Auto-referido"    = "auto"),
+              selected = NULL, options = list(`live-search` = TRUE)))
+        ),
         shiny::fluidRow(
           shiny::column(12,
             shinyWidgets::pickerInput(ns("imaging_at_dx"),
@@ -114,30 +92,15 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
               multiple = TRUE, options = list(`live-search` = TRUE,
                                               `actions-box` = TRUE)))
         ),
-        # Family history: pick relative first (unlocks the cancer-type
-        # field). Limits free-text and structures the input.
         shiny::fluidRow(
           shiny::column(6,
-            shinyWidgets::pickerInput(ns("family_history_relative"),
-              "Antecedente familiar de cancer (parentesco)",
-              choices = c("Sin antecedente"     = "",
-                          "Padre"               = "padre",
-                          "Madre"               = "madre",
-                          "Hermano(a)"          = "hermano",
-                          "Hijo(a)"             = "hijo",
-                          "Abuelo(a) paterno"   = "abuelo_p",
-                          "Abuelo(a) materno"   = "abuelo_m",
-                          "Tio(a) paterno"      = "tio_p",
-                          "Tio(a) materno"      = "tio_m",
-                          "Otro"                = "otro"),
-              selected = ""),
+            shinyWidgets::awesomeCheckbox(ns("family_history_cancer"),
+              "Antecedente familiar de cancer", FALSE),
             shiny::conditionalPanel(
-              condition = sprintf("input['%s'] && input['%s'] !== ''",
-                                  ns("family_history_relative"),
-                                  ns("family_history_relative")),
+              condition = sprintf("input['%s']", ns("family_history_cancer")),
               shiny::textInput(ns("family_history_detail"),
-                "Tipo de cancer del familiar",
-                placeholder = "Ej: mama, colon, prostata"))
+                "Detalle (parentesco / sitio)",
+                placeholder = "Madre - mama; abuelo - colon"))
           ),
           shiny::column(6,
             shinyWidgets::awesomeCheckbox(ns("prior_cancer"),
@@ -169,7 +132,25 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
                               "Subtipo histologico (ICD-O-3)",
                               choices = NULL),
         shiny::fluidRow(
-          shiny::column(12, style = "padding-top:8px;",
+          shiny::column(12,
+            shiny::radioButtons(ns("tumor_grade"), "Grado tumoral",
+              choices = c("G1","G2","G3","G4","GX"),
+              selected = character(0), inline = TRUE))
+        ),
+        shiny::fluidRow(
+          shiny::column(12,
+            shiny::radioButtons(ns("ecog_ps"), "ECOG performance status",
+              choices = c("0","1","2","3","4"),
+              selected = character(0), inline = TRUE))
+        ),
+        shiny::fluidRow(
+          shiny::column(6,
+            shinyWidgets::pickerInput(ns("hpv"), "VPH",
+              choices = c("Desconocido" = "desconocido",
+                          "Positivo"    = "positivo",
+                          "Negativo"    = "negativo"),
+              selected = "desconocido")),
+          shiny::column(6, style = "padding-top:30px;",
             shinyWidgets::awesomeCheckbox(ns("bilateral"),
                                           "Tumor bilateral", FALSE))
         )
@@ -218,113 +199,22 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
     # ---- Cancer-specific compartment (driven by OncoTree pick) ---------
       shiny::uiOutput(ns("cancer_specific")),
 
-    # ---- Biomarkers (fallback only - structured panel is above) --------
+    # ---- Biomarkers ----------------------------------------------------
       bs4Dash::box(
         title = shiny::tagList(shiny::icon("flask-vial"),
-                               " Biomarcadores adicionales (opcional)"),
-        width = 12, collapsible = TRUE, collapsed = TRUE,
-        status = "secondary", solidHeader = TRUE,
-        shiny::helpText(shiny::icon("circle-info"),
-          " Use este espacio SOLO para hallazgos no cubiertos por el panel ",
-          "molecular/patologico de arriba (ej. mutaciones raras, paneles NGS ",
-          "ampliados). Los biomarcadores estandar ya estan estructurados arriba."),
-        shiny::fluidRow(
-          shiny::column(6,
-            shinyWidgets::pickerInput(ns("extra_marker_key"),
-              "Biomarcador",
-              choices = c("",
-                "ATM","BRCA1","BRCA2","PALB2","CHEK2","RAD51",
-                "TP53","RB1","PTEN","APC","SMAD4","CDKN2A","STK11",
-                "MYC","NOTCH1","NOTCH2","EZH2","KMT2D","ARID1A",
-                "MET","RET","NTRK1","NTRK2","NTRK3","FGFR1","FGFR3",
-                "PIK3CA","AKT1","mTOR","ESR1","AR-V7",
-                "TMB (mut/Mb)","HRD score","LOH (%)","BRCAness",
-                "Otro (ver notas)"),
-              options = list(`live-search` = TRUE,
-                             `none-selected-text` = "Seleccione marcador"))),
-          shiny::column(6,
-            shiny::textInput(ns("extra_marker_value"),
-              "Resultado",
-              placeholder = "mutado / wildtype / valor numerico"))
-        ),
-        shiny::actionButton(ns("extra_marker_add"),
-          shiny::tagList(shiny::icon("plus"), " Agregar"),
-          class = "btn btn-sm btn-outline-primary"),
-        shiny::hr(),
-        shiny::tags$label("Lista capturada"),
-        shiny::verbatimTextOutput(ns("extra_markers_preview"),
-                                  placeholder = TRUE),
-        # Hidden mirror of the captured list (the textarea form keeps the
-        # existing merge_biomarkers_json() pipeline working unchanged).
-        shinyjs::hidden(
-          shiny::textAreaInput(ns("biomarkers_raw"), NULL, value = "", rows = 1)
-        ),
-        shiny::hr(),
-        shiny::tags$label("Marcadores tumorales sericos (opcional)"),
-        shiny::fluidRow(
-          shiny::column(4, shiny::numericInput(ns("tm_cea"),
-            "CEA (ng/mL)", value = NA, min = 0, step = 0.1)),
-          shiny::column(4, shiny::numericInput(ns("tm_ca125"),
-            "CA-125 (U/mL)", value = NA, min = 0, step = 1)),
-          shiny::column(4, shiny::numericInput(ns("tm_ca199"),
-            "CA 19-9 (U/mL)", value = NA, min = 0, step = 1))
-        ),
-        shiny::fluidRow(
-          shiny::column(4, shiny::numericInput(ns("tm_ca153"),
-            "CA 15-3 (U/mL)", value = NA, min = 0, step = 1)),
-          shiny::column(4, shiny::numericInput(ns("tm_afp"),
-            "AFP (ng/mL)", value = NA, min = 0, step = 0.1)),
-          shiny::column(4, shiny::numericInput(ns("tm_bhcg"),
-            "beta-hCG (mUI/mL)", value = NA, min = 0, step = 0.1))
-        ),
-        shinyjs::hidden(
-          shiny::textAreaInput(ns("tumor_markers_raw"), NULL, value = "", rows = 1)
-        )
-      )
-    ),
-
-    # ---- Treatment line + intent (only for treatment encounters) -------
-    # Tracking 1L/2L/3L lines and their intent is the cornerstone of
-    # downstream PFS / OS-by-line analyses. We surface it as the FIRST
-    # control inside any treatment encounter so it's never forgotten.
-    shiny::conditionalPanel(
-      condition = sprintf("input['%s'] == 'treatment'", ns("encounter_type")),
-      bs4Dash::box(
-        title = shiny::tagList(shiny::icon("layer-group"),
-                               " Linea e intencion del tratamiento"),
-        width = 12, collapsible = FALSE, status = "primary", solidHeader = TRUE,
-        shiny::fluidRow(
-          shiny::column(3,
-            shiny::numericInput(ns("line"),
-              shiny::tagList(
-                "Linea de tratamiento ",
-                shiny::tags$span(
-                  `data-toggle` = "tooltip", `data-bs-toggle` = "tooltip",
-                  `data-placement` = "top", `data-bs-placement` = "top",
-                  `data-html` = "true", `data-bs-html` = "true",
-                  title = paste0(
-                    "<div style='text-align:left'>",
-                    "<b>1L</b> Tratamiento inicial post-diagnostico<br>",
-                    "<b>2L</b> Tras progresion o intolerancia a 1L<br>",
-                    "<b>3L+</b> Lineas subsecuentes",
-                    "</div>"),
-                  style = "cursor:help; color:#0d2c54;",
-                  shiny::icon("circle-info"))
-              ),
-              value = 1, min = 1, max = 20, step = 1)),
-          shiny::column(5,
-            shiny::radioButtons(ns("treatment_intent"), "Intencion",
-              choices = c("Curativo"     = "curativo",
-                          "Adyuvante"    = "adyuvante",
-                          "Neoadyuvante" = "neoadyuvante",
-                          "Paliativo"    = "paliativo",
-                          "Mantenimiento"= "mantenimiento"),
-              selected = character(0), inline = TRUE)),
-          shiny::column(4,
-            shiny::div(class = "text-muted small mt-2",
-              shiny::icon("circle-info"), " ",
-              shiny::textOutput(ns("line_hint"), inline = TRUE)))
-        )
+                               " Biomarcadores libres"),
+        width = 12, collapsible = TRUE, status = "primary", solidHeader = TRUE,
+        shiny::helpText("Para los marcadores especificos del tipo de ",
+                        "cancer use el panel rojo de arriba. Aqui ",
+                        "solo capture biomarcadores adicionales no listados."),
+        shiny::textAreaInput(ns("biomarkers_raw"),
+          "Biomarcadores moleculares - uno por linea, formato \"clave: valor\"",
+          rows = 3,
+          placeholder = "ATM: mutado\nTMB: 15 mut/Mb"),
+        shiny::textAreaInput(ns("tumor_markers_raw"),
+          "Marcadores tumorales sericos - uno por linea, valor numerico",
+          rows = 2,
+          placeholder = "CEA: 4.2\nCA125: 35")
       )
     ),
 
@@ -430,19 +320,9 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
       bs4Dash::box(
         title = shiny::tagList(shiny::icon("hospital"), " Cirugia"),
         width = 12, collapsible = TRUE, status = "primary", solidHeader = TRUE,
-        shinyWidgets::pickerInput(ns("surgery_cpt"),
-          "Procedimiento oncologico",
-          choices = lookup_oncology_procedures(),
-          multiple = TRUE,
-          options = list(`live-search` = TRUE,
-                         `actions-box` = TRUE,
-                         `selected-text-format` = "count > 2",
-                         `none-selected-text` = "Buscar procedimiento...",
-                         `live-search-placeholder` = "Buscar...",
-                         size = 12)),
-        shiny::textInput(ns("surgery_other"),
-          "Otro procedimiento (texto libre, opcional)",
-          placeholder = "Si no aparece arriba, descrribalo aqui"),
+        shiny::selectizeInput(ns("surgery_cpt"), "Procedimiento (CPT)",
+                              choices = NULL, multiple = TRUE,
+                              options = list(placeholder = "Buscar procedimiento...")),
         shiny::fluidRow(
           shiny::column(6,
             shinyWidgets::pickerInput(ns("surgery_intent"), "Intencion",
@@ -514,27 +394,6 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
       width = 12, collapsible = TRUE, status = "secondary", solidHeader = TRUE,
       shiny::textAreaInput(ns("notes"), NULL, rows = 3,
                            placeholder = "Observaciones libres")
-    ),
-
-    # ---- Attachments (PDF / PNG / JPG, up to 10 MB each) ----------------
-    # Files are stored as bytea in encounter_attachments and inserted AFTER
-    # the encounter row commits successfully (the parent module triggers the
-    # upload via enc$consume_files()). This keeps the form usable even when
-    # the user attaches nothing, and avoids orphan blobs on validation fail.
-    bs4Dash::box(
-      title = shiny::tagList(shiny::icon("paperclip"), " Documentos adjuntos"),
-      width = 12, collapsible = TRUE, status = "secondary", solidHeader = TRUE,
-      shiny::p(class = "text-muted small mb-2",
-        "Adjunte reportes de patologia, imagenologia o laboratorios. ",
-        shiny::strong("Maximo 10 MB por archivo."),
-        " Formatos: PDF, PNG, JPG."),
-      shiny::fileInput(ns("attachments"), NULL,
-                       multiple = TRUE,
-                       accept = c("application/pdf", "image/png", "image/jpeg"),
-                       buttonLabel = shiny::tagList(shiny::icon("upload"),
-                                                    " Seleccionar"),
-                       placeholder = "Sin archivos"),
-      shiny::div(style = "color:#a83232", shiny::textOutput(ns("att_err")))
     )
   )
 }
@@ -592,66 +451,17 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
         shiny::updateSelectizeInput(session, "chemo_drugs",
           choices = .with_recent_optgroup(ch, r$chemo_drugs), server = TRUE)
       }
-      # Surgery procedures: curated, grouped by anatomic site. We keep
-      # recents at the top by prepending a "Recientes" group when present.
-      proc <- lookup_oncology_procedures()
-      if (length(proc)) {
-        recents_proc <- intersect(as.character(r$surgery_cpt %||% character(0)),
-                                  unname(unlist(proc)))
-        if (length(recents_proc)) {
-          proc <- c(list(Recientes = recents_proc), proc)
-        }
-        shinyWidgets::updatePickerInput(session, "surgery_cpt", choices = proc,
-          selected = intersect(input$surgery_cpt %||% character(0),
-                               unname(unlist(proc))))
+      cpt <- lookup_cpt()
+      if ("PROCEDURE.DESCRIPTION" %in% names(cpt)) {
+        cs <- sort(cpt$PROCEDURE.DESCRIPTION)
+        shiny::updateSelectizeInput(session, "surgery_cpt",
+          choices = .with_recent_optgroup(cs, r$surgery_cpt), server = TRUE)
       }
     })
 
     # Live TNM string.
     output$tnm_str <- shiny::renderText({
       paste0(input$tnm_t %||% "?", input$tnm_n %||% "?", input$tnm_m %||% "?")
-    })
-
-    # ---- Extra biomarkers (structured -> hidden textarea) ------------------
-    extra_markers <- shiny::reactiveVal(list())
-
-    shiny::observeEvent(input$extra_marker_add, {
-      k <- input$extra_marker_key %||% ""
-      v <- input$extra_marker_value %||% ""
-      if (!nzchar(k) || !nzchar(v)) return()
-      cur <- extra_markers()
-      cur[[k]] <- trimws(v)
-      extra_markers(cur)
-      shinyWidgets::updatePickerInput(session, "extra_marker_key", selected = "")
-      shiny::updateTextInput(session, "extra_marker_value", value = "")
-    })
-
-    output$extra_markers_preview <- shiny::renderText({
-      m <- extra_markers()
-      if (!length(m)) return("(sin biomarcadores adicionales)")
-      paste(sprintf("%s: %s", names(m), unlist(m)), collapse = "\n")
-    })
-
-    # Mirror extra_markers + structured tumor markers into the hidden
-    # textareas that the existing merge/parse pipeline reads at submit.
-    shiny::observe({
-      m <- extra_markers()
-      txt <- if (length(m))
-        paste(sprintf("%s: %s", names(m), unlist(m)), collapse = "\n") else ""
-      shiny::updateTextAreaInput(session, "biomarkers_raw", value = txt)
-    })
-
-    shiny::observe({
-      pairs <- list(
-        CEA   = input$tm_cea,   `CA-125` = input$tm_ca125,
-        `CA 19-9` = input$tm_ca199, `CA 15-3` = input$tm_ca153,
-        AFP   = input$tm_afp,   `beta-hCG` = input$tm_bhcg
-      )
-      pairs <- pairs[vapply(pairs, function(x)
-        !is.null(x) && !is.na(x) && length(x) == 1, logical(1))]
-      txt <- if (length(pairs))
-        paste(sprintf("%s: %s", names(pairs), unlist(pairs)), collapse = "\n") else ""
-      shiny::updateTextAreaInput(session, "tumor_markers_raw", value = txt)
     })
 
     # Cancer-specific compartment: react to the OncoTree pick.
@@ -812,7 +622,7 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
         immuno_drug      = combine_drugs(input$immuno_drug,
                                          input$immuno_drug_other),
 
-        surgery_cpt          = combine_drugs(input$surgery_cpt, input$surgery_other),
+        surgery_cpt          = if (length(input$surgery_cpt)) input$surgery_cpt else NA,
         surgery_intent       = nz(input$surgery_intent),
         surgery_margin       = nz(input$surgery_margin),
         lymph_nodes_examined = as_int(input$lymph_nodes_examined),
@@ -825,108 +635,9 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
         death_date     = as_date(input$death_date),
         death_cause    = nz(input$death_cause),
         notes          = nz(input$notes),
-
-        # Treatment-line tracking (nullable; only meaningful when
-        # encounter_type == 'treatment').
-        line             = if (isTRUE(input$encounter_type == "treatment"))
-                             as_int(input$line) else NA,
-        treatment_intent = if (isTRUE(input$encounter_type == "treatment"))
-                             nz(input$treatment_intent) else NA,
-
         created_by     = u$user_id
       )
     })
-
-    # ---- Treatment-line auto-suggestion ------------------------------------
-    # When the user switches to a treatment encounter, pre-fill the line
-    # number with (max existing line for this patient) + 1 so they don't
-    # have to remember whether this is 2L or 3L.
-    output$line_hint <- shiny::renderText({
-      if (!isTRUE(input$encounter_type == "treatment")) return("")
-      p <- if (is.function(patient)) patient() else patient
-      if (is.null(p) || is.null(p$mrn)) return("Linea 1L sugerida (paciente nuevo).")
-      u <- .u(); if (is.null(u) || !.has_pool()) return("")
-      max_line <- tryCatch(
-        db_read(pool, u,
-          "SELECT COALESCE(MAX(line),0) AS m FROM encounters
-            WHERE hospital_id=$1 AND mrn=$2 AND encounter_type='treatment'",
-          params = list(u$hospital_id, p$mrn))$m,
-        error = function(e) 0L)
-      sprintf("Sugerencia: %dL (basada en lineas previas registradas).",
-              as.integer(max_line) + 1L)
-    })
-
-    shiny::observeEvent(list(input$encounter_type, patient()), {
-      if (!isTRUE(input$encounter_type == "treatment")) return()
-      p <- if (is.function(patient)) patient() else patient
-      if (is.null(p) || is.null(p$mrn)) {
-        shiny::updateNumericInput(session, "line", value = 1)
-        return()
-      }
-      u <- .u(); if (is.null(u) || !.has_pool()) return()
-      max_line <- tryCatch(
-        db_read(pool, u,
-          "SELECT COALESCE(MAX(line),0) AS m FROM encounters
-            WHERE hospital_id=$1 AND mrn=$2 AND encounter_type='treatment'",
-          params = list(u$hospital_id, p$mrn))$m,
-        error = function(e) 0L)
-      shiny::updateNumericInput(session, "line",
-                                value = as.integer(max_line) + 1L)
-    }, ignoreInit = FALSE)
-
-    # ---- Attachment validation (10 MB cap, allowed MIME types) -------------
-    .ATT_MAX <- 10L * 1024L * 1024L
-    .ATT_OK_MIME <- c("application/pdf", "image/png", "image/jpeg")
-    att_err_rv <- shiny::reactiveVal("")
-    output$att_err <- shiny::renderText(att_err_rv())
-
-    shiny::observeEvent(input$attachments, {
-      f <- input$attachments
-      if (is.null(f) || nrow(f) == 0) { att_err_rv(""); return() }
-      msgs <- character(0)
-      for (i in seq_len(nrow(f))) {
-        if (!(f$type[i] %in% .ATT_OK_MIME)) {
-          msgs <- c(msgs, sprintf("'%s': tipo %s no permitido.",
-                                  f$name[i], f$type[i]))
-        } else if (f$size[i] > .ATT_MAX) {
-          msgs <- c(msgs, sprintf("'%s': %.1f MB excede el limite de 10 MB.",
-                                  f$name[i], f$size[i]/1024/1024))
-        }
-      }
-      att_err_rv(paste(msgs, collapse = " "))
-    })
-
-    # Consumed by the parent module *after* the encounter row commits.
-    # Returns the number of attachments successfully written.
-    consume_files <- function(encounter_id, hospital_id, mrn) {
-      f <- input$attachments
-      if (is.null(f) || nrow(f) == 0) return(0L)
-      u <- .u(); if (is.null(u) || !.has_pool()) return(0L)
-      n_ok <- 0L
-      for (i in seq_len(nrow(f))) {
-        if (!(f$type[i] %in% .ATT_OK_MIME)) next
-        if (f$size[i] > .ATT_MAX) next
-        bytes <- tryCatch(readBin(f$datapath[i], what = "raw",
-                                  n = as.integer(f$size[i])),
-                          error = function(e) NULL)
-        if (is.null(bytes)) next
-        try({
-          with_tenant(pool, u, function(con) {
-            DBI::dbExecute(con,
-              "INSERT INTO encounter_attachments
-                 (encounter_id, hospital_id, mrn, filename, mime,
-                  size_bytes, content, uploaded_by)
-               VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
-              params = list(encounter_id, hospital_id, mrn,
-                            f$name[i], f$type[i],
-                            as.integer(f$size[i]),
-                            list(bytes), u$user_id))
-          })
-          n_ok <- n_ok + 1L
-        }, silent = TRUE)
-      }
-      n_ok
-    }
 
     reset <- function() {
       shinyjs::reset(session$ns(""))
@@ -944,8 +655,7 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
     }
 
     list(values = values, iv = iv, reset = reset, input = input,
-         on_submit_success = on_submit_success,
-         consume_files = consume_files)
+         on_submit_success = on_submit_success)
   })
 }
 

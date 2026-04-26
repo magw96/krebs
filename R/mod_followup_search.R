@@ -36,7 +36,11 @@ mod_followup_search_ui <- function(id) {
           shinycssloaders::withSpinner(timevis::timevisOutput(ns("timeline"), height = "240px"),
                                        type = 5, color = "midnightblue", size = 0.5),
           shiny::br(),
-          DT::DTOutput(ns("encounters_tbl"))
+          DT::DTOutput(ns("encounters_tbl")),
+          shiny::br(),
+          shiny::h5(shiny::icon("paperclip"), " Documentos adjuntos"),
+          DT::DTOutput(ns("attachments_tbl")),
+          shiny::uiOutput(ns("download_link"))
         ),
 
         shiny::conditionalPanel(
@@ -59,7 +63,8 @@ mod_followup_search_ui <- function(id) {
   )
 }
 
-mod_followup_search_server <- function(id, pool, user, data_changed = NULL) {
+mod_followup_search_server <- function(id, pool, user, data_changed = NULL,
+                                       prefill = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -75,6 +80,19 @@ mod_followup_search_server <- function(id, pool, user, data_changed = NULL) {
           maxOptions = 25
         ))
     })
+
+    # ---- Deeplink prefill: navbar quick-search and Mis pendientes both
+    # write list(mrn, ts) into a reactiveVal. Whenever it ticks, pre-load
+    # that patient into this tab's search field so the right pane refreshes.
+    if (!is.null(prefill)) {
+      shiny::observeEvent(prefill(), {
+        u <- user(); p <- prefill()
+        if (is.null(u) || is.null(p) || !nzchar(p$mrn %||% "")) return()
+        shiny::updateSelectizeInput(session, "search",
+          choices = stats::setNames(p$mrn, p$mrn),
+          selected = p$mrn, server = TRUE)
+      }, ignoreInit = TRUE)
+    }
 
     # Debounced query each time the user types.
     shiny::observeEvent(input$search_search, {
@@ -150,14 +168,82 @@ mod_followup_search_server <- function(id, pool, user, data_changed = NULL) {
 
     output$encounters_tbl <- DT::renderDT({
       e <- encounters(); if (is.null(e) || nrow(e) == 0) return(NULL)
+      cols_show <- intersect(
+        c("encounter_date","encounter_type","line","treatment_intent",
+          "tnm_t","tnm_n","tnm_m","primary_site","oncotree","chemo","radio",
+          "complication","vital_status","notes"),
+        names(e))
       DT::datatable(
-        e[, c("encounter_date","encounter_type","tnm_t","tnm_n","tnm_m",
-              "primary_site","oncotree","chemo","radio","complication",
-              "vital_status","notes")],
+        e[, cols_show, drop = FALSE],
         rownames = FALSE, options = list(pageLength = 5, scrollX = TRUE),
         style = "bootstrap4"
       )
     })
+
+    # ---- Attachments list (no blob bytes -- view excludes content) ---------
+    attachments <- shiny::reactive({
+      if (!is.null(data_changed)) data_changed()
+      p <- patient(); u <- user()
+      if (is.null(p) || is.null(u)) return(NULL)
+      tryCatch(db_read(pool, u, "
+        SELECT attachment_id, filename, mime, size_bytes,
+               to_char(uploaded_at,'YYYY-MM-DD HH24:MI') AS uploaded_at
+          FROM v_encounter_attachments_meta
+         WHERE hospital_id=$1 AND mrn=$2
+         ORDER BY uploaded_at DESC
+         LIMIT 100",
+        params = list(u$hospital_id, p$mrn)),
+        error = function(e) NULL)
+    })
+
+    output$attachments_tbl <- DT::renderDT({
+      a <- attachments(); if (is.null(a) || nrow(a) == 0) {
+        return(DT::datatable(
+          data.frame(Mensaje = "Sin documentos adjuntos."),
+          rownames = FALSE, options = list(dom = "t", paging = FALSE),
+          style = "bootstrap4"))
+      }
+      a$size <- sprintf("%.1f KB", a$size_bytes / 1024)
+      DT::datatable(
+        a[, c("filename","mime","size","uploaded_at")],
+        rownames = FALSE, selection = "single",
+        colnames = c("Archivo","Tipo","Tamano","Subido"),
+        options = list(pageLength = 5, dom = "tip"),
+        style = "bootstrap4"
+      )
+    })
+
+    # Single-row selection -> render a downloadHandler link.
+    output$download_link <- shiny::renderUI({
+      a <- attachments(); sel <- input$attachments_tbl_rows_selected
+      if (is.null(a) || is.null(sel) || length(sel) == 0L) return(NULL)
+      shiny::downloadLink(session$ns("dl_attachment"),
+        label = shiny::tagList(shiny::icon("download"), " Descargar ",
+                               shiny::strong(a$filename[sel])),
+        class = "btn btn-sm btn-outline-primary mt-2")
+    })
+
+    output$dl_attachment <- shiny::downloadHandler(
+      filename = function() {
+        a <- attachments(); sel <- input$attachments_tbl_rows_selected
+        if (is.null(a) || is.null(sel)) return("attachment.bin")
+        a$filename[sel]
+      },
+      content = function(file) {
+        a <- attachments(); sel <- input$attachments_tbl_rows_selected
+        u <- user()
+        if (is.null(a) || is.null(sel) || is.null(u)) return()
+        rid <- a$attachment_id[sel]
+        row <- db_read(pool, u,
+          "SELECT content FROM encounter_attachments WHERE attachment_id=$1",
+          params = list(rid))
+        if (nrow(row) == 0) return()
+        writeBin(row$content[[1]], file)
+        audit_event(pool, u, "EXPORT",
+                    target_table = "encounter_attachments",
+                    target_id    = as.character(rid))
+      }
+    )
 
     # ---- Encounter form & submit -------------------------------------------
     enc <- mod_encounter_form_server("enc",
@@ -183,8 +269,20 @@ mod_followup_search_server <- function(id, pool, user, data_changed = NULL) {
       shinyjs::disable("submit"); shinyjs::show("submit_msg")
       on.exit({ shinyjs::enable("submit"); shinyjs::hide("submit_msg") }, add = TRUE)
 
+      new_enc_id <- NULL
       tryCatch({
-        with_tenant(pool, u, function(con) insert_encounter(con, u, vals))
+        with_tenant(pool, u, function(con) {
+          new_enc_id <<- insert_encounter(con, u, vals)
+        })
+        # Attach files post-commit (a bad blob shouldn't kill the encounter).
+        n_files <- tryCatch(
+          enc$consume_files(new_enc_id, u$hospital_id, p$mrn),
+          error = function(e) { message("[followup] attach: ", conditionMessage(e)); 0L })
+        if (isTRUE(n_files > 0)) {
+          shiny::showNotification(
+            sprintf("%d archivo(s) adjuntados.", n_files),
+            type = "message", duration = 3)
+        }
         err_rv("")
         # Drop the autosaved draft and bump the user's recents cache.
         try(enc$on_submit_success(vals), silent = TRUE)

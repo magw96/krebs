@@ -48,6 +48,21 @@
       if (link) link.click();
     }
 
+    // Ctrl/Cmd + K -> focus navbar quick-search
+    if (mod && (e.key === "k" || e.key === "K")) {
+      e.preventDefault();
+      var qs = document.querySelector(
+        ".krebs-quicksearch .selectize-input input");
+      if (qs) {
+        qs.focus();
+        // selectize hides the real input; trigger a click on its wrapper
+        // to open the dropdown so the user can type immediately.
+        var wrap = document.querySelector(
+          ".krebs-quicksearch .selectize-control");
+        if (wrap) wrap.click();
+      }
+    }
+
     // Esc -> blur active selectize/picker dropdown
     if (e.key === "Escape") {
       var dd = document.querySelector(".dropdown-menu.show, .selectize-dropdown");

@@ -50,6 +50,7 @@ app_ui <- function(request) {
         skin  = "light",
         status = "primary",
         rightUi = shiny::tagList(
+          mod_quick_search_ui("quick"),
           shiny::uiOutput("user_chip", inline = TRUE)
         )
       ),
@@ -58,6 +59,9 @@ app_ui <- function(request) {
         skin  = "light",
         bs4Dash::sidebarMenu(
           id = "sidebar",
+          bs4Dash::menuItem("Mis pendientes",
+            tabName = "tab_home", icon = shiny::icon("clipboard-check"),
+            selected = TRUE),
           bs4Dash::menuItem("Registrar paciente",
             tabName = "tab_register", icon = shiny::icon("user-plus")),
           bs4Dash::menuItem("Seguimiento",
@@ -73,6 +77,7 @@ app_ui <- function(request) {
 
       body = bs4Dash::dashboardBody(
         bs4Dash::tabItems(
+          bs4Dash::tabItem(tabName = "tab_home",      mod_home_ui("home")),
           bs4Dash::tabItem(tabName = "tab_register",  mod_register_new_ui("register")),
           bs4Dash::tabItem(tabName = "tab_followup",  mod_followup_search_ui("followup")),
           bs4Dash::tabItem(tabName = "tab_dashboard", mod_dashboard_ui("dash")),

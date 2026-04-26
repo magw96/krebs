@@ -179,10 +179,38 @@ html, body, .content-wrapper, .main-sidebar, .card, .btn,
 .user-chip {
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-size: 14px;
-  color: #1f2a44;
+  color: #fff;
   margin-right: 14px;
 }
-.user-chip .fa-user-circle { color: #6f42c1; margin-right: 4px; }
+.user-chip a, .user-chip a:visited { color: #cdd9ec !important; }
+.user-chip .fa-user-circle { color: #f1c40f; margin-right: 4px; }
+
+/* Navbar patient quick-search ----------------------------------------------- */
+.krebs-quicksearch {
+  display: inline-block;
+  vertical-align: middle;
+  min-width: 280px;
+  margin-right: 18px;
+}
+.krebs-quicksearch .selectize-input {
+  border: 1px solid rgba(255,255,255,0.35) !important;
+  background: rgba(255,255,255,0.08) !important;
+  color: #fff !important;
+  border-radius: 999px;
+  padding: 4px 14px;
+  font-size: 13.5px;
+  min-height: 32px;
+}
+.krebs-quicksearch .selectize-input input {
+  color: #fff !important;
+}
+.krebs-quicksearch .selectize-input input::placeholder {
+  color: #cdd9ec !important;
+}
+.krebs-quicksearch .selectize-dropdown {
+  z-index: 9999;
+  font-size: 13px;
+}
 
 /* Required-field marker (used by Tab 1) */
 .mandatory_star { color: #c00; margin-left: 2px; }

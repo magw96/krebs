@@ -53,10 +53,26 @@ app_server <- function(input, output, session) {
   # instead of showing stale cached results.
   data_changed <- shiny::reactiveVal(0L)
 
+  # Cross-module deeplink: any caller (navbar quick-search, Mis pendientes
+  # row click, ...) writes an MRN here, which switches to the Seguimiento
+  # tab and pre-loads that patient.
+  pick_patient <- shiny::reactiveVal(NULL)
+  go_to_patient <- function(mrn) {
+    if (is.null(mrn) || !nzchar(mrn)) return()
+    pick_patient(list(mrn = mrn, ts = as.numeric(Sys.time())))
+    bs4Dash::updateTabItems(session, "sidebar", selected = "tab_followup")
+  }
+
+  mod_quick_search_server   ("quick",    pool = pool, user = current_user,
+                             on_pick    = go_to_patient)
+  mod_home_server           ("home",     pool = pool, user = current_user,
+                             on_pick    = go_to_patient,
+                             data_changed = data_changed)
   mod_register_new_server   ("register", pool = pool, user = current_user,
                              data_changed = data_changed)
   mod_followup_search_server("followup", pool = pool, user = current_user,
-                             data_changed = data_changed)
+                             data_changed = data_changed,
+                             prefill      = pick_patient)
   mod_dashboard_server      ("dash",     pool = pool, user = current_user)
   mod_admin_data_server     ("data",     pool = pool, user = current_user,
                              data_changed = data_changed)

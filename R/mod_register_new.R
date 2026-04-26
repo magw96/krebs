@@ -272,6 +272,10 @@ mod_register_new_server <- function(id, pool, user, data_changed = NULL) {
       message(sprintf("[register] inserting mrn=%s hospital_id=%s user=%s",
                       input$mrn, hid, u$user_id))
 
+      # Captures the encounter_id returned by insert_encounter() so we can
+      # attach uploaded files in a separate post-commit step.
+      new_enc_id <- NULL
+
       tryCatch({
         with_tenant(pool, u_eff, function(con) {
           # 1) patient identifier (PHI)
@@ -317,9 +321,20 @@ mod_register_new_server <- function(id, pool, user, data_changed = NULL) {
             }
           }
 
-          # 4) initial_dx encounter
-          insert_encounter(con, u_eff, vals)
+          # 4) initial_dx encounter -- capture returned encounter_id so we
+          # can attach uploaded files to it after the txn commits.
+          new_enc_id <<- insert_encounter(con, u_eff, vals)
         })
+        # 5) Drain the file-upload tray. Done OUTSIDE the txn so a single
+        # bad blob doesn't roll back the whole patient registration.
+        n_files <- tryCatch(
+          enc$consume_files(new_enc_id, hid, input$mrn),
+          error = function(e) { message("[register] attach: ", conditionMessage(e)); 0L })
+        if (isTRUE(n_files > 0)) {
+          shiny::showNotification(
+            sprintf("%d archivo(s) adjuntados al encuentro inicial.", n_files),
+            type = "message", duration = 3)
+        }
         # Drop the autosaved draft and bump the user's recents cache.
         try(enc$on_submit_success(vals), silent = TRUE)
         # Bump the cross-module trigger so dashboard + data tabs refresh.
@@ -359,6 +374,7 @@ insert_encounter <- function(con, user, vals) {
     "family_history_cancer","family_history_detail",
     "prior_cancer","prior_cancer_site",
     "first_symptom_date","referral_source",
+    "line","treatment_intent",
     "chemo","chemo_intent","chemo_drugs","chemo_cycles","chemo_response",
     "radio","radio_dose_gy",
     "hormonal_therapy","hormonal_drug",
