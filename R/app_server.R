@@ -16,10 +16,15 @@ app_server <- function(input, output, session) {
 
   # Open the login modal whenever there is no authenticated user. removeModal()
   # clears Bootstrap's backdrop, so the rest of the UI becomes interactive again.
+  # We also toggle the `krebs-pre-auth` class on <body> so the CSS can hide
+  # the bs4Dash chrome (sidebar/header/content) entirely while the user is
+  # unauthenticated -- belt and braces alongside the :has() rule.
   shiny::observe({
     if (is.null(user_rv())) {
+      shinyjs::addClass(selector = "body", class = "krebs-pre-auth")
       mod_login_show()
     } else {
+      shinyjs::removeClass(selector = "body", class = "krebs-pre-auth")
       shiny::removeModal()
     }
   })

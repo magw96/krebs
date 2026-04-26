@@ -441,25 +441,43 @@ html, body, .content-wrapper, .main-sidebar, .card, .btn,
 .bootstrap-select .dropdown-menu li.selected a { background: #eef3ff; }
 
 /* ---- Pre-auth full-page background -----------------------------------
-   While the login modal is open, hide the dashboard chrome behind a
-   solid navy gradient so the unauthenticated user never glimpses the
-   internal app layout. Uses :has() (Chrome 105+, Safari 15.4+,
-   Firefox 121+) and falls back to the default dimmed backdrop on
-   older browsers. */
+   While there is no authenticated user, app_server adds the
+   `krebs-pre-auth` class to <body>. We also keep the :has() variant
+   as a safety net for the brief moment between modal mount and the
+   class toggle. Hide every AdminLTE region by name (.main-header,
+   .main-sidebar, .content-wrapper, .main-footer, .control-sidebar)
+   because a generic .wrapper rule misses bs4Dash's actual DOM. */
+
+body.krebs-pre-auth,
 body:has(.krebs-login-card) {
   background: linear-gradient(135deg,
               var(--krebs-primary) 0%,
               var(--krebs-primary-soft) 60%,
               #1f4a82 100%) !important;
+  overflow: hidden !important;
 }
-body:has(.krebs-login-card) > .wrapper,
-body:has(.krebs-login-card) .wrapper {
-  visibility: hidden !important;
+
+body.krebs-pre-auth .main-header,
+body.krebs-pre-auth .main-sidebar,
+body.krebs-pre-auth .content-wrapper,
+body.krebs-pre-auth .main-footer,
+body.krebs-pre-auth .control-sidebar,
+body.krebs-pre-auth .wrapper,
+body:has(.krebs-login-card) .main-header,
+body:has(.krebs-login-card) .main-sidebar,
+body:has(.krebs-login-card) .content-wrapper,
+body:has(.krebs-login-card) .main-footer,
+body:has(.krebs-login-card) .control-sidebar {
+  display: none !important;
 }
-/* Our solid background already covers everything, so the modal's own
-   dark backdrop becomes a redundant grey overlay -- drop it. */
+
+/* The solid navy background already covers everything; the modal's
+   own dimmed backdrop becomes a redundant grey overlay -- drop it. */
+body.krebs-pre-auth .modal-backdrop,
 body:has(.krebs-login-card) .modal-backdrop { display: none !important; }
-/* Lift the modal up a bit on tall screens so the navy card sits in the
-   visual centre instead of feeling top-anchored. */
+
+/* Lift the modal a bit on tall screens so the navy card sits closer to
+   the visual centre instead of feeling top-anchored. */
+body.krebs-pre-auth .modal-dialog,
 body:has(.krebs-login-card) .modal-dialog { margin-top: 12vh; }
 
