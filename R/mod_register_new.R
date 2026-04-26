@@ -347,8 +347,26 @@ mod_register_new_server <- function(id, pool, user, data_changed = NULL) {
         shinyjs::hide("submit"); shinyjs::show("ok_msg")
       },
       error = function(e) {
-        msg <- paste("Error al guardar:", conditionMessage(e))
-        message("[register] ", msg)
+        raw <- conditionMessage(e)
+        message("[register] ", raw)
+        # Friendlier message for the most common Postgres errors.
+        msg <- if (grepl("patient_identifiers_pkey|duplicate key.*patient_identifiers",
+                         raw, ignore.case = TRUE)) {
+          sprintf(paste0(
+            "El MRN '%s' ya esta registrado en este hospital. ",
+            "Use la pestana 'Seguimiento' para abrir el expediente y agregar ",
+            "un nuevo evento clinico."), input$mrn %||% "")
+        } else if (grepl("duplicate key", raw, ignore.case = TRUE)) {
+          "El registro ya existe (clave duplicada)."
+        } else if (grepl("violates foreign key", raw, ignore.case = TRUE)) {
+          "Falta un registro relacionado en la base de datos."
+        } else if (grepl("violates check constraint", raw, ignore.case = TRUE)) {
+          "Uno de los campos no cumple con las reglas de validacion."
+        } else if (grepl("permission denied|not authorized", raw, ignore.case = TRUE)) {
+          "Su rol no tiene permisos para esta operacion."
+        } else {
+          paste("Error al guardar:", raw)
+        }
         err_rv(msg)
         shiny::showNotification(msg, type = "error", duration = 8)
       })

@@ -35,15 +35,15 @@ mod_quick_search_server <- function(id, pool, user, on_pick) {
     # avoids the input$q_search round-trip that doesn't exist in stock Shiny.
     shiny::observe({
       u <- user(); if (is.null(u)) return()
+      # No explicit hospital_id filter -- RLS handles tenant scoping (and
+      # super_admin's hospital_id is NULL, which would zero-match here).
       pl <- tryCatch(
         db_read(pool, u, "
           SELECT mrn, nombre,
                  to_char(fecha_nac,'YYYY-MM-DD') AS dob, sexo
             FROM patient_identifiers
-           WHERE hospital_id = $1
            ORDER BY nombre ASC
-           LIMIT 5000",
-          params = list(u$hospital_id)),
+           LIMIT 5000"),
         error = function(e) {
           message("[quick] preload err: ", conditionMessage(e))
           NULL

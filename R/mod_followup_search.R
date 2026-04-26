@@ -322,9 +322,11 @@ mod_followup_search_server <- function(id, pool, user, data_changed = NULL,
 
 # ---- helpers ---------------------------------------------------------------
 
-#' Search patients within the user's hospital. Matches MRN as a prefix OR
-#' name via ILIKE (case-insensitive substring). Tries trigram similarity
-#' first (pg_trgm) and falls back to ILIKE if the extension is missing.
+#' Search patients. Hospital scoping is handled by RLS (super_admin sees
+#' all, regular users see only their hospital), so we don't filter on
+#' hospital_id here -- doing so would break super_admin (NULL hospital_id).
+#' Tries trigram similarity first (pg_trgm) and falls back to plain ILIKE
+#' if the extension is missing.
 search_patients <- function(pool, user, q) {
   q_low  <- tolower(q)
   q_like <- paste0("%", gsub("([%_])", "\\\\\\1", q_low), "%")
@@ -336,11 +338,10 @@ search_patients <- function(pool, user, q) {
              sexo,
              similarity(lower(nombre), $1) AS sim
         FROM patient_identifiers
-       WHERE hospital_id = $3
-         AND (mrn ILIKE $2 OR lower(nombre) % $1 OR lower(nombre) ILIKE $2)
-       ORDER BY (mrn = $4) DESC, sim DESC NULLS LAST
+       WHERE mrn ILIKE $2 OR lower(nombre) % $1 OR lower(nombre) ILIKE $2
+       ORDER BY (mrn = $3) DESC, sim DESC NULLS LAST
        LIMIT 25
-    ", params = list(q_low, q_like, user$hospital_id, q)),
+    ", params = list(q_low, q_like, q)),
     error = function(e) {
       message("[search_patients] trigram fallback: ", conditionMessage(e))
       db_read(pool, user, "
@@ -348,11 +349,10 @@ search_patients <- function(pool, user, q) {
                to_char(fecha_nac,'YYYY-MM-DD') AS dob,
                sexo
           FROM patient_identifiers
-         WHERE hospital_id = $2
-           AND (mrn ILIKE $1 OR lower(nombre) ILIKE $1)
-         ORDER BY mrn ASC
+         WHERE mrn ILIKE $1 OR lower(nombre) ILIKE $1
+         ORDER BY (mrn = $2) DESC, mrn ASC
          LIMIT 25
-      ", params = list(q_like, user$hospital_id))
+      ", params = list(q_like, q))
     })
 
   if (is.null(rows) || nrow(rows) == 0)
