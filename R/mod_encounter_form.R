@@ -89,13 +89,17 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
                            language = "es")),
         shiny::column(3,
           shiny::conditionalPanel(condition = initial_or_recurrence,
-          shinyWidgets::pickerInput(ns("dx_method"), "Metodo diagnostico",
+          shinyWidgets::pickerInput(ns("dx_method"),
+            # En recurrencia este mismo campo funge como "metodo de
+            # confirmacion", por eso incluye marcador serico tambien.
+            "Metodo diagnostico / confirmacion",
             choices = c("(seleccione)" = "",
-                        "Biopsia"      = "biopsia",
-                        "Citologia"    = "citologia",
-                        "Imagen"       = "imagen",
-                        "Clinico"      = "clinico",
-                        "Quirurgico"   = "quirurgico"),
+                        "Biopsia"        = "biopsia",
+                        "Citologia"      = "citologia",
+                        "Imagen"         = "imagen",
+                        "Clinico"        = "clinico",
+                        "Quirurgico"     = "quirurgico",
+                        "Marcador serico" = "marcador_serologico"),
             selected = "", options = list(`live-search` = TRUE)))),
         shiny::column(3,
           shiny::conditionalPanel(
@@ -228,10 +232,13 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
       condition = sprintf("input['%s'] == 'recurrence'", ns("encounter_type")),
       bs4Dash::box(
         title = shiny::tagList(shiny::icon("triangle-exclamation"),
-                               " Datos de la recurrencia / progresion"),
+                               " Patron de recurrencia"),
         width = 12, collapsible = TRUE, status = "danger", solidHeader = TRUE,
+        # Metodo de confirmacion y "re-biopsia" se derivan del campo
+        # "Metodo diagnostico / confirmacion" (caja superior) y de la
+        # respuesta a la ultima linea va en el bloque de Tratamiento.
         shiny::fluidRow(
-          shiny::column(4,
+          shiny::column(6,
             shinyWidgets::pickerInput(ns("recurrence_type"),
               "Patron de recurrencia",
               choices = c("(seleccione)"   = "",
@@ -240,21 +247,7 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
                           "A distancia (metastasica)" = "distancia",
                           "Mixta (local + distancia)" = "mixta",
                           "Desconocida"    = "desconocida"),
-              selected = "")),
-          shiny::column(4,
-            shinyWidgets::pickerInput(ns("recurrence_confirmation"),
-              "Metodo de confirmacion",
-              choices = c("(seleccione)"           = "",
-                          "Imagen"                 = "imagen",
-                          "Biopsia (histologica)"  = "biopsia",
-                          "Citologia"              = "citologia",
-                          "Quirurgica"             = "quirurgico",
-                          "Marcador serico"        = "marcador_serologico",
-                          "Clinico"                = "clinico"),
-              selected = "")),
-          shiny::column(4,
-            shinyWidgets::awesomeCheckbox(ns("biopsy_done"),
-              "Re-biopsia obtenida (re-perfilado molecular)", FALSE))
+              selected = ""))
         ),
         # Sites of distant disease (only when distancia / mixta) -----------
         shiny::conditionalPanel(
@@ -279,18 +272,6 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
                            `live-search` = TRUE,
                            `selected-text-format` = "count > 2",
                            `none-selected-text` = "Seleccione sitio(s)"))
-        ),
-        shiny::fluidRow(
-          shiny::column(6,
-            shinyWidgets::pickerInput(ns("prior_treatment_response"),
-              "Respuesta a la ultima linea de tratamiento",
-              choices = c("(seleccione)"  = "",
-                          "Completa"      = "completa",
-                          "Parcial"       = "parcial",
-                          "Estable"       = "estable",
-                          "Progresion"    = "progresion",
-                          "No evaluable"  = "no_evaluable"),
-              selected = ""))
         ),
         shiny::div(class = "alert alert-info small mb-0",
           shiny::icon("circle-info"), " ",
@@ -441,67 +422,10 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
     # Tracking 1L/2L/3L lines and their intent is the cornerstone of
     # downstream PFS / OS-by-line analyses. The intent applies to the
     # WHOLE line (chemo + RT + immuno + hormonal etc.) so we render it
-    # ONCE here and remove the redundant per-modality intent radios.
-    shiny::conditionalPanel(
-      condition = sprintf(
-        "['initial_dx','recurrence','treatment'].indexOf(input['%s']) > -1",
-        ns("encounter_type")),
-      bs4Dash::box(
-        title = shiny::tagList(shiny::icon("layer-group"),
-                               " Linea e intencion del tratamiento"),
-        width = 12, collapsible = FALSE, status = "primary", solidHeader = TRUE,
-        shiny::fluidRow(
-          shiny::column(3,
-            shiny::numericInput(ns("line"),
-              shiny::tagList(
-                "Linea de tratamiento ",
-                shiny::tags$span(
-                  `data-toggle` = "tooltip", `data-bs-toggle` = "tooltip",
-                  `data-placement` = "top", `data-bs-placement` = "top",
-                  `data-html` = "true", `data-bs-html` = "true",
-                  title = paste0(
-                    "<div style='text-align:left'>",
-                    "<b>1L</b> Tratamiento inicial post-diagnostico<br>",
-                    "<b>2L</b> Tras progresion o intolerancia a 1L<br>",
-                    "<b>3L+</b> Lineas subsecuentes",
-                    "</div>"),
-                  style = "cursor:help; color:#0d2c54;",
-                  shiny::icon("circle-info"))
-              ),
-              value = 1, min = 1, max = 20, step = 1)),
-          shiny::column(5,
-            shiny::radioButtons(ns("treatment_intent"),
-              shiny::tagList(
-                "Intencion ",
-                shiny::tags$span(
-                  `data-toggle` = "tooltip", `data-bs-toggle` = "tooltip",
-                  `data-placement` = "top", `data-bs-placement` = "top",
-                  `data-html` = "true", `data-bs-html` = "true",
-                  title = paste0(
-                    "<div style='text-align:left'>",
-                    "<b>Curativo</b> Erradicacion de la enfermedad<br>",
-                    "<b>Adyuvante</b> Tras cirugia/RT curativa para reducir recaida<br>",
-                    "<b>Neoadyuvante</b> Antes del tratamiento curativo para reducir tamano<br>",
-                    "<b>Paliativo</b> Control sintomatico/calidad de vida, sin intencion curativa<br>",
-                    "<b>Mantenimiento</b> Continuacion tras respuesta para prolongar control",
-                    "</div>"),
-                  style = "cursor:help; color:#0d2c54;",
-                  shiny::icon("circle-info"))
-              ),
-              choices = c("Curativo"     = "curativo",
-                          "Adyuvante"    = "adyuvante",
-                          "Neoadyuvante" = "neoadyuvante",
-                          "Paliativo"    = "paliativo",
-                          "Mantenimiento"= "mantenimiento"),
-              selected = character(0), inline = TRUE)),
-          shiny::column(4,
-            # Only render the hint+icon when there is actually a hint to show.
-            # Previously we had a bare circle-info icon stranded next to an
-            # empty textOutput on encounter types where line_hint = "".
-            shiny::uiOutput(ns("line_hint_box")))
-        )
-      )
-    ),
+    # NB: el cuadro standalone "Linea e intencion" se removio; ahora linea +
+    # intencion + respuesta al tratamiento viven DENTRO de Tratamiento
+    # sistemico y se desbloquean en cuanto se marca al menos una modalidad.
+    # Esto mantiene un solo lugar para todo lo del tratamiento por encuentro.
 
     # ---- Systemic treatment --------------------------------------------
     shiny::conditionalPanel(
@@ -509,7 +433,8 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
                           ns("encounter_type")),
       bs4Dash::box(
         title = shiny::tagList(shiny::icon("syringe"),
-                               " Tratamiento sistemico"),
+                               shiny::textOutput(ns("treatment_box_title"),
+                                                 inline = TRUE)),
         width = 12, collapsible = TRUE, status = "primary", solidHeader = TRUE,
         shinyWidgets::awesomeCheckbox(ns("chemo"), "Quimioterapia", FALSE),
         shiny::conditionalPanel(
@@ -525,15 +450,10 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
             shiny::fluidRow(
               shiny::column(6,
                 shiny::numericInput(ns("chemo_cycles"), "Numero de ciclos",
-                                    value = NA, min = 1, max = 50)),
-              shiny::column(6,
-                shinyWidgets::pickerInput(ns("chemo_response"), "Respuesta",
-                  choices = c("(seleccione)"  = "",
-                              "Completa"      = "completa",
-                              "Parcial"       = "parcial",
-                              "Estable"       = "estable",
-                              "Progresion"    = "progresion"),
-                  selected = ""))
+                                    value = NA, min = 1, max = 50))
+              # `chemo_response` se removio: la respuesta se captura una sola
+              # vez al final del bloque (treatment_response) y aplica a toda
+              # la combinacion de modalidades.
             )
           )
         ),
@@ -598,6 +518,102 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
           shiny::div(class = "ml-4",
             shiny::numericInput(ns("radio_dose_gy"), "Dosis total (Gy)",
                                 value = NA, min = 0, step = 0.5))
+        ),
+        # ---- Linea + intencion + respuesta (gated por modalidad) -------
+        # Solo se desbloquea si hay al menos una modalidad seleccionada.
+        # En recurrencia el alert deja claro que aplica al tratamiento de
+        # la recurrencia, no al inicial.
+        shiny::conditionalPanel(
+          condition = sprintf(
+            "input['%s'] || input['%s'] || input['%s'] || input['%s'] || input['%s']",
+            ns("chemo"), ns("hormonal_therapy"), ns("targeted_therapy"),
+            ns("immunotherapy"), ns("radio")),
+          shiny::hr(),
+          shiny::uiOutput(ns("treatment_context_alert")),
+          shiny::fluidRow(
+            shiny::column(3,
+              shiny::numericInput(ns("line"),
+                shiny::tagList(
+                  "Linea de tratamiento ",
+                  shiny::tags$span(
+                    `data-toggle` = "tooltip", `data-bs-toggle` = "tooltip",
+                    `data-placement` = "top", `data-bs-placement` = "top",
+                    `data-html` = "true", `data-bs-html` = "true",
+                    title = paste0(
+                      "<div style='text-align:left'>",
+                      "<b>1L</b> Tratamiento inicial post-diagnostico<br>",
+                      "<b>2L</b> Tras progresion o intolerancia a 1L<br>",
+                      "<b>3L+</b> Lineas subsecuentes",
+                      "</div>"),
+                    style = "cursor:help; color:#0d2c54;",
+                    shiny::icon("circle-info"))
+                ),
+                value = 1, min = 1, max = 20, step = 1)),
+            shiny::column(5,
+              shiny::radioButtons(ns("treatment_intent"),
+                shiny::tagList(
+                  "Intencion ",
+                  shiny::tags$span(
+                    `data-toggle` = "tooltip", `data-bs-toggle` = "tooltip",
+                    `data-placement` = "top", `data-bs-placement` = "top",
+                    `data-html` = "true", `data-bs-html` = "true",
+                    title = paste0(
+                      "<div style='text-align:left'>",
+                      "<b>Curativo</b> Erradicacion de la enfermedad<br>",
+                      "<b>Adyuvante</b> Tras cirugia/RT curativa para reducir recaida<br>",
+                      "<b>Neoadyuvante</b> Antes del tratamiento curativo para reducir tamano<br>",
+                      "<b>Paliativo</b> Control sintomatico/calidad de vida, sin intencion curativa<br>",
+                      "<b>Mantenimiento</b> Continuacion tras respuesta para prolongar control",
+                      "</div>"),
+                    style = "cursor:help; color:#0d2c54;",
+                    shiny::icon("circle-info"))
+                ),
+                choices = c("Curativo"     = "curativo",
+                            "Adyuvante"    = "adyuvante",
+                            "Neoadyuvante" = "neoadyuvante",
+                            "Paliativo"    = "paliativo",
+                            "Mantenimiento"= "mantenimiento"),
+                selected = character(0), inline = TRUE)),
+            shiny::column(4,
+              shiny::uiOutput(ns("line_hint_box")))
+          ),
+          # ---- Respuesta al tratamiento ----------------------------------
+          # Metodo de evaluacion + valor de la respuesta. La opcion
+          # "Patologica" solo se ofrece cuando se registro algun
+          # procedimiento quirurgico en este encuentro (re-operacion).
+          shiny::fluidRow(
+            shiny::column(5,
+              shinyWidgets::pickerInput(ns("treatment_response_method"),
+                shiny::tagList(
+                  "Metodo de evaluacion ",
+                  shiny::tags$span(
+                    `data-toggle` = "tooltip", `data-bs-toggle` = "tooltip",
+                    `data-placement` = "top", `data-bs-placement` = "top",
+                    `data-html` = "true", `data-bs-html` = "true",
+                    title = paste0(
+                      "<div style='text-align:left'>",
+                      "<b>Clinica</b> Examen fisico / sintomas<br>",
+                      "<b>Imagen</b> RECIST u otra evaluacion radiologica<br>",
+                      "<b>Patologica</b> Solo si hubo re-operacion (tejido reexaminado)",
+                      "</div>"),
+                    style = "cursor:help; color:#0d2c54;",
+                    shiny::icon("circle-info"))
+                ),
+                choices = c("(seleccione)" = "",
+                            "Clinica" = "clinica",
+                            "Imagen"  = "imagen"),
+                selected = "")),
+            shiny::column(5,
+              shinyWidgets::pickerInput(ns("treatment_response"),
+                "Respuesta al tratamiento",
+                choices = c("(seleccione)" = "",
+                            "Completa"     = "completa",
+                            "Parcial"      = "parcial",
+                            "Estable"      = "estable",
+                            "Progresion"   = "progresion",
+                            "No evaluable" = "no_evaluable"),
+                selected = ""))
+          )
         )
       ),
 
@@ -927,6 +943,20 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
       .prefill_done(FALSE)
     }, ignoreInit = TRUE)
 
+    # ---- Min event date guard ---------------------------------------------
+    # For non-initial_dx events, the picker should not allow dates before the
+    # patient's initial_dx (fecha_dx). This catches the error UX-side instead
+    # of waiting for the post-submit validator to scream.
+    shiny::observe({
+      etype <- input$encounter_type %||% ""
+      p <- if (is.function(patient)) patient() else patient
+      dx <- suppressWarnings(as.Date(p$fecha_dx %||% NA))
+      min_d <- if (!isTRUE(etype == "initial_dx") &&
+                   !is.null(dx) && !is.na(dx)) dx else NA
+      shiny::updateDateInput(session, "encounter_date",
+                             min = if (is.na(min_d)) NA else as.character(min_d))
+    })
+
     # Live TNM string.
     output$tnm_str <- shiny::renderText({
       paste0(input$tnm_t %||% "?", input$tnm_n %||% "?", input$tnm_m %||% "?")
@@ -953,6 +983,48 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
         " Clasificacion TNM"
     })
     shiny::outputOptions(output, "tnm_title", suspendWhenHidden = FALSE)
+
+    # ---- Treatment box title + context alert ------------------------------
+    # The Tratamiento sistemico box gets a context-aware title so it is
+    # obvious in recurrence rows that the registered treatment applies to
+    # the recurrence (not the initial diagnosis).
+    output$treatment_box_title <- shiny::renderText({
+      if (isTRUE(input$encounter_type == "recurrence"))
+        " Tratamiento sistemico de la recurrencia"
+      else
+        " Tratamiento sistemico"
+    })
+    shiny::outputOptions(output, "treatment_box_title",
+                         suspendWhenHidden = FALSE)
+
+    output$treatment_context_alert <- shiny::renderUI({
+      msg <- if (isTRUE(input$encounter_type == "recurrence"))
+        "Esta linea, intencion y respuesta corresponden al tratamiento de la recurrencia."
+      else if (isTRUE(input$encounter_type == "treatment"))
+        "Linea, intencion y respuesta del nuevo tratamiento."
+      else
+        "Linea, intencion y respuesta del tratamiento inicial."
+      shiny::div(class = "alert alert-secondary small",
+                 shiny::icon("circle-info"), " ", msg)
+    })
+
+    # Add "Patologica (re-operado)" to the response-method picker only when
+    # at least one surgical procedure has been registered in this encounter
+    # (re-operation makes pathological response evaluable).
+    shiny::observe({
+      has_surgery <- (length(input$surgery_cpt) > 0 &&
+                      any(nzchar(input$surgery_cpt))) ||
+                      isTRUE(nzchar(input$surgery_other %||% ""))
+      base <- c("(seleccione)" = "",
+                "Clinica" = "clinica",
+                "Imagen"  = "imagen")
+      if (isTRUE(has_surgery))
+        base <- c(base, "Patologica (re-operado)" = "patologica")
+      shinyWidgets::updatePickerInput(session, "treatment_response_method",
+                                      choices  = base,
+                                      selected = input$treatment_response_method
+                                                 %||% "")
+    })
 
     # ---- Auto-prefill downstream dates from encounter_date ---------------
     # Mirror encounter_date into surgery_date / discharge_date / death_date so
@@ -1188,6 +1260,10 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
         tnm_t_basis    = nz(input$tnm_t_basis),
         tnm_n_basis    = nz(input$tnm_n_basis),
         primary_site   = nz(input$primary_site),
+        # Reverse-lookup the Spanish picker label back to the canonical English
+        # ICD-O-3 Site Description so the icdo3_topo column actually gets
+        # populated (it was always NULL before).
+        icdo3_topo     = site_label_to_topo(nz(input$primary_site)),
         oncotree       = nz(input$oncotree),
         icdo3_morph    = nz(input$icdo3_morph),
         bilateral      = isTRUE(input$bilateral),
@@ -1215,7 +1291,10 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
         chemo_intent     = if (isTRUE(input$chemo)) nz(input$treatment_intent) else NA,
         chemo_drugs      = if (length(input$chemo_drugs)) input$chemo_drugs else NA,
         chemo_cycles     = as_int(input$chemo_cycles),
-        chemo_response   = nz(input$chemo_response),
+        # chemo_response se mantiene por compatibilidad con la columna BD
+        # pero ahora se hereda de la respuesta unificada (treatment_response).
+        chemo_response   = if (isTRUE(input$chemo))
+                             nz(input$treatment_response) else NA,
         radio            = isTRUE(input$radio),
         radio_dose_gy    = as_num(input$radio_dose_gy),
         hormonal_therapy = isTRUE(input$hormonal_therapy),
@@ -1267,6 +1346,25 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
                                       c("initial_dx","recurrence","treatment")))
                              nz(input$treatment_intent) else NA,
 
+        # Unified response (column added in migration 008). Solo se guarda
+        # si hubo al menos una modalidad activa en este encuentro.
+        treatment_response = if (isTRUE(input$encounter_type %in%
+                                        c("initial_dx","recurrence","treatment")) &&
+                                 (isTRUE(input$chemo) ||
+                                  isTRUE(input$hormonal_therapy) ||
+                                  isTRUE(input$targeted_therapy) ||
+                                  isTRUE(input$immunotherapy) ||
+                                  isTRUE(input$radio)))
+                               nz(input$treatment_response) else NA,
+        treatment_response_method = if (isTRUE(input$encounter_type %in%
+                                              c("initial_dx","recurrence","treatment")) &&
+                                       (isTRUE(input$chemo) ||
+                                        isTRUE(input$hormonal_therapy) ||
+                                        isTRUE(input$targeted_therapy) ||
+                                        isTRUE(input$immunotherapy) ||
+                                        isTRUE(input$radio)))
+                                     nz(input$treatment_response_method) else NA,
+
         # Recurrence-specific fields (nullable; only meaningful when
         # encounter_type == 'recurrence'). recurrence_sites is an array.
         recurrence_type          = if (isTRUE(input$encounter_type == "recurrence"))
@@ -1274,12 +1372,17 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
         recurrence_sites         = if (isTRUE(input$encounter_type == "recurrence")
                                        && length(input$recurrence_sites))
                                      input$recurrence_sites else NA,
+        # `recurrence_confirmation` y `biopsy_done` ya no tienen su propio
+        # widget: ambos se derivan del campo Metodo diagnostico/confirmacion
+        # (input$dx_method) que se reusa para recurrencia.
         recurrence_confirmation  = if (isTRUE(input$encounter_type == "recurrence"))
-                                     nz(input$recurrence_confirmation) else NA,
+                                     nz(input$dx_method) else NA,
         biopsy_done              = if (isTRUE(input$encounter_type == "recurrence"))
-                                     isTRUE(input$biopsy_done) else NA,
-        prior_treatment_response = if (isTRUE(input$encounter_type == "recurrence"))
-                                     nz(input$prior_treatment_response) else NA,
+                                     isTRUE(input$dx_method == "biopsia") else NA,
+        # Compatibilidad: la columna prior_treatment_response (respuesta a la
+        # linea PREVIA antes de la recurrencia) ya no se captura porque era
+        # redundante con la respuesta de la linea actual. Se deja NULL.
+        prior_treatment_response = NA,
         time_to_recurrence_days  = if (isTRUE(input$encounter_type == "recurrence")) {
                                      dx <- suppressWarnings(as.Date(p$fecha_dx %||% NA))
                                      ev <- suppressWarnings(as.Date(input$encounter_date))

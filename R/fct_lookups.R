@@ -219,6 +219,40 @@ lookup_sites <- function() {
   sort(unique(c(translated, extras)))
 }
 
+#' Reverse lookup: Spanish display label -> English ICD-O-3 Site Description.
+#' Used at submit time to populate `encounters.icdo3_topo` (the canonical
+#' topographic key) when the user picks a Spanish site label. Returns the
+#' input unchanged if no reverse mapping exists (e.g. for the manual extras
+#' like "Extremidad superior derecha").
+site_label_to_topo <- function(label) {
+  if (is.null(label) || !length(label) || !nzchar(label)) return(NA_character_)
+  # Build a one-shot reverse cache. Inverting .SITE_ES gives Spanish->English.
+  rev <- stats::setNames(names(.SITE_ES), unname(.SITE_ES))
+  hit <- unname(rev[label])
+  if (!is.na(hit) && nzchar(hit)) return(hit)
+  # Fallback: maybe the user already has the English value (legacy data).
+  if (label %in% names(.SITE_ES)) return(label)
+  # Otherwise, store the label verbatim so the column is at least non-empty.
+  as.character(label)
+}
+
+#' Reverse lookup: morphology description -> ICD-O-3 Histology/Behavior code
+#' (e.g. "8140/3"). Used at submit time so encounters.icdo3_morph stores the
+#' actual code rather than the prose description (which already lives in the
+#' picker label). Returns NA when no match is found.
+morph_label_to_code <- function(label) {
+  if (is.null(label) || !length(label) || !nzchar(label)) return(NA_character_)
+  d <- lookup_icdo3()
+  if (!length(d) || !nrow(d)) return(NA_character_)
+  desc_col <- intersect(c("Histology/Behavior Description",
+                          "Histology.Behavior.Description"), names(d))
+  code_col <- intersect(c("Histology/Behavior",
+                          "Histology.Behavior"), names(d))
+  if (!length(desc_col) || !length(code_col)) return(NA_character_)
+  hit <- d[[code_col[1]]][match(label, d[[desc_col[1]]])][1]
+  if (is.na(hit) || !nzchar(hit)) NA_character_ else as.character(hit)
+}
+
 #' Spanish translation map for the OncoTree tumour catalogue.
 #' DB still stores the English code (so analyses across hospitals stay
 #' comparable); only the displayed label is in Spanish.

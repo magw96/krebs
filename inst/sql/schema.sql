@@ -113,6 +113,14 @@ CREATE TABLE IF NOT EXISTS encounters (
     complication      TEXT CHECK (complication IS NULL OR complication IN
                        ('ninguna','I','II','IIIa','IIIb','IVa','IVb','V')),
 
+    -- unified treatment response (replaces chemo_response / prior_treatment_response)
+    treatment_response        TEXT CHECK (treatment_response IS NULL OR
+                                treatment_response IN
+                                ('completa','parcial','estable','progresion','no_evaluable')),
+    treatment_response_method TEXT CHECK (treatment_response_method IS NULL OR
+                                treatment_response_method IN
+                                ('clinica','imagen','patologica')),
+
     -- vital status (only meaningful for followup / death rows)
     vital_status      TEXT CHECK (vital_status IN ('vivo','muerto','perdido') OR vital_status IS NULL),
     death_date        DATE,
