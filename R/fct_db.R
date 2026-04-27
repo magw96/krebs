@@ -116,7 +116,23 @@ db_update <- function(pool, user, table, where, set) {
   })
 }
 
-`%||%` <- function(a, b) if (!is.null(a) && length(a) > 0 && !is.na(a[[1]])) a else b
+#' Null-coalescing operator. Returns `a` unless it's "missing":
+#'   - NULL
+#'   - empty (length 0)
+#'   - a length-1 NA scalar
+#' Anything else (including multi-row data.frames or vectors with NAs anywhere
+#' OTHER than position 1) is returned as-is.
+#'
+#' NB: previously this called `is.na(a[[1]])` without first checking length(a),
+#' which crashed for multi-row data.frames in R >= 4.3 because `is.na()` on a
+#' column returned a vector that broke `&&`. That silently zeroed the
+#' Mis-pendientes KPI counters whenever there were >1 pending rows.
+`%||%` <- function(a, b) {
+  if (is.null(a)) return(b)
+  if (length(a) == 0L) return(b)
+  if (length(a) == 1L && is.na(a[[1L]])) return(b)
+  a
+}
 
 #' Apply a clinician-justified amendment to a patient identity field or an
 #' encounter field. Wraps the actual UPDATE plus the patient_amendments INSERT

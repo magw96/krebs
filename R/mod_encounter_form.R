@@ -801,6 +801,10 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
       p <- if (is.function(patient)) patient() else patient
       if (is.null(p) || is.null(p$mrn)) return()
       u <- .u(); if (is.null(u) || !.has_pool()) return()
+      # Super_admin has u$hospital_id == NA; fall back to the patient's
+      # hospital_id so the SQL filter doesn't evaluate to FALSE on NULL.
+      hid <- u$hospital_id %||% p$hospital_id
+      if (is.null(hid) || is.na(hid)) return()
       dx <- tryCatch(
         db_read(pool, u,
           "SELECT primary_site, oncotree, icdo3_morph
@@ -808,16 +812,29 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
             WHERE hospital_id = $1 AND mrn = $2
               AND encounter_type = 'initial_dx'
             ORDER BY encounter_date ASC LIMIT 1",
-          params = list(u$hospital_id, p$mrn)),
-        error = function(e) NULL)
+          params = list(hid, p$mrn)),
+        error = function(e) {
+          message("[prefill] db_read err: ", conditionMessage(e)); NULL
+        })
       if (is.null(dx) || nrow(dx) == 0L) return()
+      r <- shiny::isolate(recents())
+      # Pass `choices = ...` together with `selected = ...` for every field
+      # we prefill. Selectize.js silently drops setValue() when the value
+      # isn't in its rendered options, so passing the value-bearing choices
+      # alongside the selection is the only race-free way to prefill.
       if (!is.null(dx$primary_site) && nzchar(dx$primary_site %||% "")) {
+        sites <- lookup_sites()
         shiny::updateSelectizeInput(session, "primary_site",
-                                    selected = dx$primary_site)
+          choices  = .with_recent_optgroup(sites, r$primary_site),
+          selected = dx$primary_site,
+          server   = FALSE)
       }
       if (!is.null(dx$oncotree) && nzchar(dx$oncotree %||% "")) {
+        onco <- lookup_oncotree()
         shiny::updateSelectizeInput(session, "oncotree",
-                                    selected = dx$oncotree)
+          choices  = .with_recent_optgroup(onco, r$oncotree),
+          selected = dx$oncotree,
+          server   = FALSE)
       }
       if (!is.null(dx$icdo3_morph) && nzchar(dx$icdo3_morph %||% "")) {
         # icdo3_morph stays server=TRUE (12k items). For the prefill to
