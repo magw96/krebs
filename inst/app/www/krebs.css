@@ -441,12 +441,34 @@ html, body, .content-wrapper, .main-sidebar, .card, .btn,
 .bootstrap-select .dropdown-menu li.selected a { background: #eef3ff; }
 
 /* ---- Pre-auth full-page background -----------------------------------
-   While there is no authenticated user, app_server adds the
-   `krebs-pre-auth` class to <body>. We also keep the :has() variant
-   as a safety net for the brief moment between modal mount and the
-   class toggle. Hide every AdminLTE region by name (.main-header,
-   .main-sidebar, .content-wrapper, .main-footer, .control-sidebar)
-   because a generic .wrapper rule misses bs4Dash's actual DOM. */
+   Two layers of protection so the unauthenticated user never sees the
+   dashboard chrome:
+
+   (1) <html class="krebs-loading"> -- set inline in <head> by an early
+       script tag (see app_ui.R) BEFORE any bs4Dash region is parsed.
+       This handles the cold-load flash where Shiny is still booting
+       and the websocket hasn't connected yet.
+   (2) <body class="krebs-pre-auth"> -- toggled by app_server via
+       shinyjs once the websocket is up; persists until login succeeds.
+
+   Both states paint a navy gradient page and hide every AdminLTE
+   region by name (.main-header, .main-sidebar, .content-wrapper,
+   .main-footer, .control-sidebar) because a generic .wrapper rule
+   misses bs4Dash's actual DOM. */
+
+html.krebs-loading,
+html.krebs-loading body {
+  background: linear-gradient(135deg, #0d2c54 0%, #14365e 60%, #1f4a82 100%) !important;
+  overflow: hidden !important;
+}
+html.krebs-loading .main-header,
+html.krebs-loading .main-sidebar,
+html.krebs-loading .content-wrapper,
+html.krebs-loading .main-footer,
+html.krebs-loading .control-sidebar,
+html.krebs-loading .wrapper { display: none !important; }
+html.krebs-loading .modal-backdrop { display: none !important; }
+
 
 body.krebs-pre-auth,
 body:has(.krebs-login-card) {

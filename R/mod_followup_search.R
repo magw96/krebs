@@ -367,6 +367,21 @@ mod_followup_search_server <- function(id, pool, user, data_changed = NULL,
       # satisfied. Regular users always have their own hospital_id set.
       vals$hospital_id <- u$hospital_id %||% p$hospital_id
 
+      # ---- Chronological guard --------------------------------------------
+      # No event after the initial dx may be dated earlier than the dx
+      # itself. This protects against operator typos like recording a death
+      # before the diagnosis ever happened.
+      dx_date <- suppressWarnings(as.Date(p$fecha_dx %||% NA))
+      ev_date <- suppressWarnings(as.Date(vals$encounter_date %||% NA))
+      if (!is.na(dx_date) && !is.na(ev_date) &&
+          isTRUE(vals$encounter_type != "initial_dx") &&
+          ev_date < dx_date) {
+        err_rv(sprintf(
+          "Error: la fecha del evento (%s) es anterior al diagnostico inicial (%s).",
+          format(ev_date), format(dx_date)))
+        return()
+      }
+
       shinyjs::disable("submit"); shinyjs::show("submit_msg")
       on.exit({ shinyjs::enable("submit"); shinyjs::hide("submit_msg") }, add = TRUE)
 

@@ -21,29 +21,33 @@ mod_home_ui <- function(id) {
       "para abrir su expediente en Seguimiento."),
 
     # KPI row -----------------------------------------------------------------
+    # NOTE: we render plain small-box divs via uiOutput because bs4Dash's
+    # valueBoxOutput/renderValueBox sometimes shows stale 0s when the
+    # underlying reactive recomputes (a known gotcha in older bs4Dash). A
+    # straight uiOutput is fully reactive and easier to style.
     shiny::fluidRow(
-      shiny::column(4, bs4Dash::valueBoxOutput(ns("kpi_overdue"), width = 12)),
-      shiny::column(4, bs4Dash::valueBoxOutput(ns("kpi_recurrence"), width = 12)),
-      shiny::column(4, bs4Dash::valueBoxOutput(ns("kpi_death"), width = 12))
+      shiny::column(4, shiny::uiOutput(ns("kpi_overdue"))),
+      shiny::column(4, shiny::uiOutput(ns("kpi_recurrence"))),
+      shiny::column(4, shiny::uiOutput(ns("kpi_death")))
     ),
 
     # Worklists ---------------------------------------------------------------
     bs4Dash::box(
       title = shiny::tagList(shiny::icon("hourglass-half"),
         sprintf(" Seguimiento vencido (>%d dias sin encuentro)", .OVERDUE_DAYS)),
-      width = 12, status = "warning", solidHeader = TRUE, collapsible = TRUE,
+      width = 12, status = "warning", solidHeader = TRUE, collapsible = TRUE, collapsed = TRUE,
       DT::DTOutput(ns("tbl_overdue"))
     ),
     bs4Dash::box(
       title = shiny::tagList(shiny::icon("triangle-exclamation"),
         " Recurrencias recientes sin tratamiento"),
-      width = 12, status = "danger", solidHeader = TRUE, collapsible = TRUE,
+      width = 12, status = "danger", solidHeader = TRUE, collapsible = TRUE, collapsed = TRUE,
       DT::DTOutput(ns("tbl_recur"))
     ),
     bs4Dash::box(
       title = shiny::tagList(shiny::icon("file-circle-xmark"),
         " Defunciones sin cierre formal"),
-      width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE,
+      width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE, collapsed = TRUE,
       DT::DTOutput(ns("tbl_death"))
     )
   )
@@ -69,36 +73,31 @@ mod_home_server <- function(id, pool, user, on_pick, data_changed = NULL) {
       load_open_deaths(pool, u)
     })
 
-    # ---- KPI value boxes ----------------------------------------------------
-    # Wrapped defensively because bs4Dash::valueBox / icon names vary across
-    # versions and we don't want a single API mismatch to blank the whole tab.
-    safe_kpi <- function(n_expr, subtitle, icon_name, color) {
-      n <- tryCatch(as.integer(nrow(n_expr %||% data.frame())),
-                    error = function(e) 0L)
-      tryCatch(
-        bs4Dash::valueBox(
-          value    = n,
-          subtitle = subtitle,
-          icon     = shiny::icon(icon_name),
-          color    = color,
-          width    = 12
-        ),
-        error = function(e) {
-          message("[home] valueBox err: ", conditionMessage(e))
-          shiny::div(class = sprintf("small-box bg-%s", color),
-            shiny::div(class = "inner",
-              shiny::h3(n), shiny::p(subtitle)),
-            shiny::div(class = "icon",
-              shiny::icon(icon_name)))
-        })
+    # ---- KPI counters (custom small-box divs) -------------------------------
+    # We avoid bs4Dash::valueBox here because in our setup it sometimes shows
+    # a stale value of 0 even when the underlying reactive returns rows.
+    # The small-box markup below is the same AdminLTE structure bs4Dash uses
+    # internally, so the styling matches the rest of the dashboard.
+    kpi_box <- function(n, subtitle, icon_name, color) {
+      shiny::div(class = sprintf("small-box bg-%s", color),
+        shiny::div(class = "inner",
+          shiny::h3(n),
+          shiny::p(subtitle)),
+        shiny::div(class = "icon",
+          shiny::icon(icon_name)))
     }
+    n_rows <- function(d) tryCatch(as.integer(nrow(d %||% data.frame())),
+                                   error = function(e) 0L)
 
-    output$kpi_overdue <- bs4Dash::renderValueBox(
-      safe_kpi(overdue(),     "Seguimientos vencidos",  "hourglass-half",     "warning"))
-    output$kpi_recurrence <- bs4Dash::renderValueBox(
-      safe_kpi(recur_open(),  "Recurrencias abiertas",  "triangle-exclamation","danger"))
-    output$kpi_death <- bs4Dash::renderValueBox(
-      safe_kpi(deaths_open(), "Defunciones sin cierre", "file-circle-xmark",  "info"))
+    output$kpi_overdue <- shiny::renderUI(
+      kpi_box(n_rows(overdue()),     "Seguimientos vencidos",
+              "hourglass-half",      "warning"))
+    output$kpi_recurrence <- shiny::renderUI(
+      kpi_box(n_rows(recur_open()),  "Recurrencias abiertas",
+              "triangle-exclamation","danger"))
+    output$kpi_death <- shiny::renderUI(
+      kpi_box(n_rows(deaths_open()), "Defunciones sin cierre",
+              "file-circle-xmark",   "info"))
 
     # ---- Tables -------------------------------------------------------------
     render_worklist <- function(reactive_df, empty_msg) {

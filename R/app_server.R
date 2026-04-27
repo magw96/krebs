@@ -22,9 +22,13 @@ app_server <- function(input, output, session) {
   shiny::observe({
     if (is.null(user_rv())) {
       shinyjs::addClass(selector = "body", class = "krebs-pre-auth")
+      # Don't strip the <html> loading class -- the modal is still
+      # showing, the user is still pre-auth.
+      shinyjs::addClass(selector = "html", class = "krebs-loading")
       mod_login_show()
     } else {
       shinyjs::removeClass(selector = "body", class = "krebs-pre-auth")
+      shinyjs::removeClass(selector = "html", class = "krebs-loading")
       shiny::removeModal()
     }
   })

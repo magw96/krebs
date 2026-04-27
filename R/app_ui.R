@@ -19,6 +19,15 @@ app_ui <- function(request) {
     # shinyjs MUST be initialised at the very top of the document so that
     # toggleState/show/hide/reset calls in modules find their JS hook.
     shinyjs::useShinyjs(),
+    # Pre-auth shield. Marks <html> as loading BEFORE any bs4Dash chrome
+    # is parsed/painted, so the user never glimpses the dashboard while
+    # Shiny boots and the login modal is still in flight. The class is
+    # removed by app_server once the login modal is closed AND a user is
+    # authenticated. We add the class via an inline script in the head
+    # rather than a Shiny output so it is applied during HTML parse,
+    # not after the websocket connects.
+    shiny::tags$head(shiny::tags$script(shiny::HTML(
+      "document.documentElement.classList.add('krebs-loading');"))),
     shiny::tags$head(
       # Keep the external link as a fallback (it will load if the resource
       # path is registered), and ALSO inline the file so the theme always
