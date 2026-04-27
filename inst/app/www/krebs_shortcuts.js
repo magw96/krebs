@@ -74,33 +74,52 @@
     }
   }, true);
 
-  // ---- Bootstrap tooltips (BS4 jQuery + BS5 vanilla) ------------------------
+  // ---- Bootstrap tooltips (event-delegated for dynamic UI) -----------------
   // bs4Dash ships Bootstrap 4 -> tooltips are jQuery plugins, NOT
-  // window.bootstrap.Tooltip. We try the jQuery path first (works for BS4
-  // and BS5 if jQuery shim is loaded) and fall back to the vanilla BS5
-  // constructor. Re-scan after Shiny re-renders modules.
-  function initTooltips() {
+  // window.bootstrap.Tooltip. Per-element init misses elements that Shiny
+  // renders inside conditionalPanels / uiOutput AFTER our scan runs, so the
+  // browser falls back to the native title="" attribute and shows literal
+  // <br> tags. The fix is event delegation: bind once on <body> with the
+  // BS4 jQuery `selector:` option (or a vanilla mouseover handler for BS5)
+  // so any element that ever matches the selector is tooltip-enabled.
+  function initDelegatedTooltips() {
+    var sel = '[data-toggle="tooltip"], [data-bs-toggle="tooltip"]';
     if (window.jQuery && typeof window.jQuery.fn.tooltip === "function") {
       try {
-        window.jQuery('[data-toggle="tooltip"], [data-bs-toggle="tooltip"]')
-          .tooltip({ html: true, container: "body" });
+        // Strip any per-element instances we may have created on previous
+        // boots so they don't double-fire.
+        window.jQuery(sel).tooltip("dispose");
+      } catch (e) { /* ignore */ }
+      try {
+        window.jQuery(document.body).tooltip({
+          selector:  sel,
+          html:      true,
+          container: "body",
+          trigger:   "hover focus"
+        });
         return;
-      } catch (e) { /* fall through */ }
+      } catch (e) { /* fall through to BS5 */ }
     }
     var bs = window.bootstrap;
     if (bs && bs.Tooltip) {
-      document.querySelectorAll('[data-bs-toggle="tooltip"], [data-toggle="tooltip"]')
-        .forEach(function (el) {
-          if (!el._kbTooltip) {
-            el._kbTooltip = new bs.Tooltip(el, { html: true, container: "body" });
-          }
+      document.body.addEventListener("mouseover", function (ev) {
+        var el = ev.target.closest(sel);
+        if (!el || el._kbTooltip) return;
+        el._kbTooltip = new bs.Tooltip(el, {
+          html: true, container: "body", trigger: "hover focus"
         });
+        el._kbTooltip.show();
+      });
+      document.body.addEventListener("focusin", function (ev) {
+        var el = ev.target.closest(sel);
+        if (!el || el._kbTooltip) return;
+        el._kbTooltip = new bs.Tooltip(el, {
+          html: true, container: "body", trigger: "hover focus"
+        });
+      });
     }
   }
-  document.addEventListener("DOMContentLoaded", initTooltips);
-  if (window.$) {
-    $(document).on("shiny:value shiny:bound shiny:visualchange", function () {
-      setTimeout(initTooltips, 50);
-    });
-  }
+  document.addEventListener("DOMContentLoaded", initDelegatedTooltips);
+  // Also run once on script load in case DOMContentLoaded already fired.
+  if (document.readyState !== "loading") initDelegatedTooltips();
 })();

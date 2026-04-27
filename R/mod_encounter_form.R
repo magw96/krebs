@@ -792,14 +792,27 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
         # client-side; we set server = FALSE so prefill (selected = X) works
         # reliably -- with server = TRUE selectize ignores setValue() unless
         # X happens to be in the AJAX-loaded chunk currently visible.
+        #
+        # We MUST pass selected= explicitly on every choices update. When
+        # choices is grouped (Recientes / Todos) and selected is omitted,
+        # selectize.js auto-picks the first option (the most-recent value),
+        # which made every freshly-opened form land on the previous patient's
+        # cancer type. Passing selected = current value (preserved) or ""
+        # (when empty) keeps the placeholder visible until the user picks.
+        keep_or_blank <- function(curr) {
+          if (is.null(curr) || !length(curr) || !nzchar(curr[1])) ""
+          else curr
+        }
         sites <- lookup_sites()
         shiny::updateSelectizeInput(session, "primary_site",
-          choices = .with_recent_optgroup(sites, r$primary_site),
-          server = FALSE)
+          choices  = .with_recent_optgroup(sites, r$primary_site),
+          selected = keep_or_blank(input$primary_site),
+          server   = FALSE)
         onco <- lookup_oncotree()
         shiny::updateSelectizeInput(session, "oncotree",
-          choices = .with_recent_optgroup(onco, r$oncotree),
-          server = FALSE)
+          choices  = .with_recent_optgroup(onco, r$oncotree),
+          selected = keep_or_blank(input$oncotree),
+          server   = FALSE)
         icdo3 <- lookup_icdo3()
         morph_col <- intersect(c("Histology.Behavior.Description",
                                  "Histology/Behavior Description"), names(icdo3))
@@ -810,8 +823,9 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
         if (length(morph_col)) {
           morph <- sort(unique(icdo3[[morph_col[1]]]))
           shiny::updateSelectizeInput(session, "icdo3_morph",
-            choices = .with_recent_optgroup(morph, r$icdo3_morph),
-            server = TRUE)
+            choices  = .with_recent_optgroup(morph, r$icdo3_morph),
+            selected = keep_or_blank(input$icdo3_morph),
+            server   = TRUE)
         }
         drugs <- lookup_drugs()
         if ("x" %in% names(drugs)) {

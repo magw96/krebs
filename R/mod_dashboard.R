@@ -388,11 +388,11 @@ mod_dashboard_server <- function(id, pool, user) {
       })
     })
 
-    # ---- Cases by Mexican state (horizontal bar) --------------------------
-    # Replaces the old mxmaps choropleth, which required heavy geo deps that
-    # do not install reliably on Posit Connect Cloud. A sortable bar chart
-    # answers the same clinical question ("which estados refer the most
-    # patients?") without any map dependency.
+    # ---- Cases by Mexican state (choropleth) ------------------------------
+    # We use a bundled GeoJSON of Mexican state polygons (built locally from
+    # mxmaps via data-raw/build_mx_municipios.R) so the deployed app does not
+    # need to install mxmaps on Posit Connect Cloud. plotly's choropleth_mapbox
+    # accepts a GeoJSON FeatureCollection directly via `geojson =`.
     output$p_map <- plotly::renderPlotly({
       tryCatch({
         u <- user(); if (is.null(u)) return(plot_empty_ly("Sin sesion"))
@@ -404,14 +404,46 @@ mod_dashboard_server <- function(id, pool, user) {
              AND pi.estado_n IS NOT NULL AND pi.estado_n <> ''
            GROUP BY pi.estado_n")
         if (is.null(df) || nrow(df) == 0) return(plot_empty_ly("Sin datos"))
-        df <- df[order(df$n), ]                        # ascending so bars stack top-down
-        df$state_name <- factor(df$state_name, levels = df$state_name)
-        p <- ggplot2::ggplot(df, ggplot2::aes(x = state_name, y = n)) +
-          ggplot2::geom_col(fill = "#0d2c54") +
-          ggplot2::coord_flip() +
-          ggplot2::labs(x = NULL, y = "Casos (initial_dx)") +
-          ggplot2::theme_minimal()
-        plotly::ggplotly(p)
+
+        gj_path <- system.file("extdata", "mx_states.geojson",
+                               package = "krebs")
+        if (!nzchar(gj_path) || !file.exists(gj_path)) {
+          # Fallback: bar chart if the GeoJSON wasn't bundled in this build.
+          df2 <- df[order(df$n), ]
+          df2$state_name <- factor(df2$state_name, levels = df2$state_name)
+          p <- ggplot2::ggplot(df2, ggplot2::aes(x = state_name, y = n)) +
+            ggplot2::geom_col(fill = "#0d2c54") +
+            ggplot2::coord_flip() +
+            ggplot2::labs(x = NULL, y = "Casos (initial_dx)",
+                          title = "Mapa no disponible (regenera mx_states.geojson)") +
+            ggplot2::theme_minimal()
+          return(plotly::ggplotly(p))
+        }
+
+        # Read the FeatureCollection as a parsed list (not sf) so plotly can
+        # forward it to plotly.js as JSON.
+        gj <- jsonlite::fromJSON(gj_path, simplifyVector = FALSE)
+
+        plotly::plot_ly() |>
+          plotly::add_trace(
+            type        = "choropleth",
+            geojson     = gj,
+            locations   = df$state_name,
+            z           = df$n,
+            featureidkey = "properties.state_name",
+            colorscale  = list(c(0, "#e6edf6"), c(1, "#0d2c54")),
+            marker      = list(line = list(width = 0.5, color = "white")),
+            colorbar    = list(title = "Casos"),
+            hovertemplate = "%{location}<br>Casos: %{z}<extra></extra>"
+          ) |>
+          plotly::layout(
+            geo = list(
+              fitbounds = "locations",
+              visible   = FALSE,
+              projection = list(type = "mercator")
+            ),
+            margin = list(l = 0, r = 0, t = 10, b = 0)
+          )
       }, error = function(e) {
         message("[dashboard] p_map error: ", conditionMessage(e))
         plot_empty_ly(paste("Error mapa:", conditionMessage(e)))
