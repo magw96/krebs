@@ -90,22 +90,24 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
         shiny::column(3,
           shiny::conditionalPanel(condition = initial_or_recurrence,
           shinyWidgets::pickerInput(ns("dx_method"), "Metodo diagnostico",
-            choices = c("Biopsia"      = "biopsia",
+            choices = c("(seleccione)" = "",
+                        "Biopsia"      = "biopsia",
                         "Citologia"    = "citologia",
                         "Imagen"       = "imagen",
                         "Clinico"      = "clinico",
                         "Quirurgico"   = "quirurgico"),
-            selected = NULL, options = list(`live-search` = TRUE)))),
+            selected = "", options = list(`live-search` = TRUE)))),
         shiny::column(3,
           shiny::conditionalPanel(
             condition = sprintf("input['%s'] == 'initial_dx'", ns("encounter_type")),
           shinyWidgets::pickerInput(ns("referral_source"), "Origen de referencia",
-            choices = c("Urgencias"        = "urgencias",
+            choices = c("(seleccione)"     = "",
+                        "Urgencias"        = "urgencias",
                         "Consulta externa" = "consulta",
                         "Referido externo" = "referido",
                         "Tamizaje"         = "tamizaje",
                         "Auto-referido"    = "auto"),
-            selected = NULL, options = list(`live-search` = TRUE)))),
+            selected = "", options = list(`live-search` = TRUE)))),
         shiny::column(3,
           shiny::conditionalPanel(
             condition = sprintf("input['%s'] != 'death'", ns("encounter_type")),
@@ -468,7 +470,24 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
               ),
               value = 1, min = 1, max = 20, step = 1)),
           shiny::column(5,
-            shiny::radioButtons(ns("treatment_intent"), "Intencion",
+            shiny::radioButtons(ns("treatment_intent"),
+              shiny::tagList(
+                "Intencion ",
+                shiny::tags$span(
+                  `data-toggle` = "tooltip", `data-bs-toggle` = "tooltip",
+                  `data-placement` = "top", `data-bs-placement` = "top",
+                  `data-html` = "true", `data-bs-html` = "true",
+                  title = paste0(
+                    "<div style='text-align:left'>",
+                    "<b>Curativo</b> Erradicacion de la enfermedad<br>",
+                    "<b>Adyuvante</b> Tras cirugia/RT curativa para reducir recaida<br>",
+                    "<b>Neoadyuvante</b> Antes del tratamiento curativo para reducir tamano<br>",
+                    "<b>Paliativo</b> Control sintomatico/calidad de vida, sin intencion curativa<br>",
+                    "<b>Mantenimiento</b> Continuacion tras respuesta para prolongar control",
+                    "</div>"),
+                  style = "cursor:help; color:#0d2c54;",
+                  shiny::icon("circle-info"))
+              ),
               choices = c("Curativo"     = "curativo",
                           "Adyuvante"    = "adyuvante",
                           "Neoadyuvante" = "neoadyuvante",
@@ -508,11 +527,12 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
                                     value = NA, min = 1, max = 50)),
               shiny::column(6,
                 shinyWidgets::pickerInput(ns("chemo_response"), "Respuesta",
-                  choices = c("Completa"           = "completa",
-                              "Parcial"            = "parcial",
-                              "Estable"            = "estable",
+                  choices = c("(seleccione)"  = "",
+                              "Completa"      = "completa",
+                              "Parcial"       = "parcial",
+                              "Estable"       = "estable",
                               "Progresion"    = "progresion"),
-                  selected = NULL))
+                  selected = ""))
             )
           )
         ),
@@ -600,15 +620,17 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
         shiny::fluidRow(
           shiny::column(6,
             shinyWidgets::pickerInput(ns("surgery_intent"), "Intencion",
-              choices = c("Curativa"            = "curativa",
-                          "Paliativa"           = "paliativa",
+              choices = c("(seleccione)"   = "",
+                          "Curativa"       = "curativa",
+                          "Paliativa"      = "paliativa",
                           "Diagnostica"    = "diagnostica"),
-              selected = NULL)),
+              selected = "")),
           shiny::column(6,
             shinyWidgets::pickerInput(ns("surgery_margin"),
               "Margenes quirurgicos",
-              choices = c("R0","R1","R2"),
-              selected = NULL))
+              choices = c("(seleccione)" = "",
+                          "R0" = "R0", "R1" = "R1", "R2" = "R2"),
+              selected = ""))
         ),
         shiny::fluidRow(
           shiny::column(6,
@@ -628,11 +650,36 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
                                 "Ganglios positivos",
                                 value = NA, min = 0, max = 200)),
           shiny::column(4,
-            shinyWidgets::pickerInput(ns("complication"), "Complicacion",
+            shinyWidgets::pickerInput(ns("complication"),
+              shiny::tagList(
+                "Complicacion (Clavien-Dindo) ",
+                shiny::tags$span(
+                  `data-toggle` = "tooltip", `data-bs-toggle` = "tooltip",
+                  `data-placement` = "top", `data-bs-placement` = "top",
+                  `data-html` = "true", `data-bs-html` = "true",
+                  title = paste0(
+                    "<div style='text-align:left'>",
+                    "<b>Ninguna</b> Sin complicacion postoperatoria<br>",
+                    "<b>I</b> Cualquier desviacion del curso normal sin necesidad de tratamiento farmacologico, quirurgico, endoscopico ni radiologico (permitidos: antiemeticos, antipireticos, analgesicos, diureticos, electrolitos, fisioterapia, infeccion de herida abierta a pie de cama)<br>",
+                    "<b>II</b> Requiere tratamiento farmacologico distinto al permitido en grado I (incluye transfusion sanguinea y nutricion parenteral total)<br>",
+                    "<b>IIIa</b> Requiere intervencion quirurgica, endoscopica o radiologica SIN anestesia general<br>",
+                    "<b>IIIb</b> Requiere intervencion BAJO anestesia general<br>",
+                    "<b>IVa</b> Complicacion potencialmente mortal con disfuncion de un solo organo (incluye dialisis)<br>",
+                    "<b>IVb</b> Disfuncion multiorganica<br>",
+                    "<b>V</b> Muerte del paciente",
+                    "</div>"),
+                  style = "cursor:help; color:#0d2c54;",
+                  shiny::icon("circle-info"))
+              ),
               choices = c("(sin especificar)" = "",
-                          "Ninguna"           = "ninguna",
-                          "Menor"             = "menor",
-                          "Mayor"             = "mayor"),
+                          "Ninguna"                    = "ninguna",
+                          "Grado I"                    = "I",
+                          "Grado II"                   = "II",
+                          "Grado IIIa"                 = "IIIa",
+                          "Grado IIIb"                 = "IIIb",
+                          "Grado IVa"                  = "IVa",
+                          "Grado IVb"                  = "IVb",
+                          "Grado V (muerte)"           = "V"),
               selected = ""))
         )
       )
@@ -893,11 +940,47 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
     shiny::outputOptions(output, "tnm_title", suspendWhenHidden = FALSE)
 
     # ---- Auto-prefill downstream dates from encounter_date ---------------
-    # When the user enters the dx/event date, mirror it into surgery_date,
-    # discharge_date and death_date *only if those are still empty*. Avoids
-    # overwriting a date the clinician deliberately set, but spares them
-    # from re-typing the most common value (same day as the event).
-    # Also enforces "no date earlier than the dx date" by bumping `min`.
+    # Mirror encounter_date into surgery_date / discharge_date / death_date so
+    # the clinician doesn't have to re-type the most common value. The old
+    # "only if empty" guard was unreliable (dateInput's client-side default
+    # often makes input$<x>_date != NULL on first read), so instead we track
+    # a per-field "user-edited" latch: as soon as the clinician sets a value
+    # that differs from what we last auto-set, we stop mirroring that field.
+    # The latch resets when encounter_type changes (new mental context).
+    .surgery_user_edited   <- shiny::reactiveVal(FALSE)
+    .discharge_user_edited <- shiny::reactiveVal(FALSE)
+    .death_user_edited     <- shiny::reactiveVal(FALSE)
+    .last_auto_surgery     <- shiny::reactiveVal(NULL)
+    .last_auto_discharge   <- shiny::reactiveVal(NULL)
+    .last_auto_death       <- shiny::reactiveVal(NULL)
+
+    # Reset latches whenever the encounter type switches (so a fresh form
+    # context starts with auto-sync re-enabled).
+    shiny::observeEvent(input$encounter_type, {
+      .surgery_user_edited(FALSE);   .last_auto_surgery(NULL)
+      .discharge_user_edited(FALSE); .last_auto_discharge(NULL)
+      .death_user_edited(FALSE);     .last_auto_death(NULL)
+    }, ignoreInit = TRUE)
+
+    # Detect manual edits: if the field changes to a value different from the
+    # one we just programmatically set, mark the field as user-edited.
+    .mark_if_user <- function(input_val, last_auto_rv, edited_rv) {
+      if (is.null(input_val) || is.na(input_val)) return()
+      la <- last_auto_rv()
+      if (is.null(la) || !identical(as.Date(input_val), as.Date(la))) {
+        edited_rv(TRUE)
+      }
+    }
+    shiny::observeEvent(input$surgery_date, {
+      .mark_if_user(input$surgery_date,   .last_auto_surgery,   .surgery_user_edited)
+    }, ignoreInit = TRUE)
+    shiny::observeEvent(input$discharge_date, {
+      .mark_if_user(input$discharge_date, .last_auto_discharge, .discharge_user_edited)
+    }, ignoreInit = TRUE)
+    shiny::observeEvent(input$death_date, {
+      .mark_if_user(input$death_date,     .last_auto_death,     .death_user_edited)
+    }, ignoreInit = TRUE)
+
     shiny::observeEvent(input$encounter_date, {
       d <- input$encounter_date
       if (is.null(d) || is.na(d)) return()
@@ -908,18 +991,22 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
       shiny::updateDateInput(session, "discharge_date", min = d, max = Sys.Date())
       shiny::updateDateInput(session, "death_date",     min = d, max = Sys.Date())
 
-      # Prefill the *value* only when surgery/discharge/death are still blank
-      # AND only on encounter types where it makes sense.
       etype <- input$encounter_type %||% ""
       if (etype %in% c("initial_dx","recurrence","treatment")) {
-        if (is.null(input$surgery_date)   || is.na(input$surgery_date))
+        if (!isTRUE(.surgery_user_edited())) {
+          .last_auto_surgery(d)
           shiny::updateDateInput(session, "surgery_date",   value = d)
-        if (is.null(input$discharge_date) || is.na(input$discharge_date))
+        }
+        if (!isTRUE(.discharge_user_edited())) {
+          .last_auto_discharge(d)
           shiny::updateDateInput(session, "discharge_date", value = d)
+        }
       }
       if (etype == "death") {
-        if (is.null(input$death_date) || is.na(input$death_date))
+        if (!isTRUE(.death_user_edited())) {
+          .last_auto_death(d)
           shiny::updateDateInput(session, "death_date", value = d)
+        }
       }
     }, ignoreInit = TRUE)
 

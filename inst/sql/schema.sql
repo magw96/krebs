@@ -110,7 +110,8 @@ CREATE TABLE IF NOT EXISTS encounters (
                         CASE WHEN discharge_date IS NOT NULL AND surgery_date IS NOT NULL
                              THEN (discharge_date - surgery_date)::INT END
                       ) STORED,
-    complication      TEXT CHECK (complication IN ('ninguna','menor','mayor') OR complication IS NULL),
+    complication      TEXT CHECK (complication IS NULL OR complication IN
+                       ('ninguna','I','II','IIIa','IIIb','IVa','IVb','V')),
 
     -- vital status (only meaningful for followup / death rows)
     vital_status      TEXT CHECK (vital_status IN ('vivo','muerto','perdido') OR vital_status IS NULL),
