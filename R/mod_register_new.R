@@ -407,14 +407,17 @@ insert_encounter <- function(con, user, vals) {
     "lymph_nodes_examined","lymph_nodes_positive",
     "surgery_date","discharge_date","complication",
     "vital_status","death_date","death_cause",
+    "recurrence_type","recurrence_sites","recurrence_confirmation",
+    "biopsy_done","prior_treatment_response","time_to_recurrence_days",
     "notes","created_by"
   )
   for (k in cols) if (is.null(vals[[k]])) vals[[k]] <- NA
   vals <- vals[cols]
 
-  vals$chemo_drugs   <- pg_text_array(vals$chemo_drugs)
-  vals$surgery_cpt   <- pg_text_array(vals$surgery_cpt)
-  vals$imaging_at_dx <- pg_text_array(vals$imaging_at_dx)
+  vals$chemo_drugs       <- pg_text_array(vals$chemo_drugs)
+  vals$surgery_cpt       <- pg_text_array(vals$surgery_cpt)
+  vals$imaging_at_dx     <- pg_text_array(vals$imaging_at_dx)
+  vals$recurrence_sites  <- pg_text_array(vals$recurrence_sites)
 
   placeholders <- paste0("$", seq_along(cols))
   sql <- paste0("INSERT INTO encounters (",

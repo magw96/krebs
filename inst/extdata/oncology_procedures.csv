@@ -50,8 +50,9 @@ Cabeza y cuello,Reseccion de tumor base de craneo,Base de craneo
 Cabeza y cuello,Reseccion de nasofaringe transoral / endoscopica,Nasofaringe
 Cabeza y cuello,Traqueostomia oncologica,Via aerea
 Esofago / GEJ,Esofagectomia transhiatal,Esofagectomia
-Esofago / GEJ,Esofagectomia Ivor-Lewis (3 campos),Esofagectomia
-Esofago / GEJ,Esofagectomia McKeown (3 campos),Esofagectomia
+Esofago / GEJ,Esofagectomia Ivor-Lewis (2 campos: abdominal + toracico derecho),Esofagectomia
+Esofago / GEJ,Esofagectomia McKeown (3 campos: abdominal + toracico + cervical),Esofagectomia
+Esofago / GEJ,Esofagectomia transtoracica izquierda,Esofagectomia
 Esofago / GEJ,Esofagectomia minimo invasiva (MIE),Esofagectomia
 Esofago / GEJ,Reseccion endoscopica mucosa (EMR),Endoscopica
 Esofago / GEJ,Diseccion endoscopica submucosa (ESD),Endoscopica

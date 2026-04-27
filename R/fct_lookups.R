@@ -96,24 +96,246 @@ lookup_drugs <- function() {
   d
 }
 
-#' Anatomical sites: use the column header as-it-arrives so a typo or
-#' space-vs-period in the source CSV won't silently empty the list.
+#' Spanish translation of ICD-O-3 site descriptions.
+#'
+#' The raw icdo3.csv ships with English, ALL-CAPS site names. We translate
+#' (and Title-Case) them on the way out so the dropdown is in Spanish for
+#' the clinical user. Anything not in this map is kept verbatim with the
+#' leading double-quote stripped (some rows have stray quotes from the CSV).
+.SITE_ES <- c(
+  "ACCESSORY SINUS"                   = "Senos accesorios",
+  "ADRENAL GLANDS"                    = "Glandulas suprarrenales",
+  "ANAL CANAL & ANUS"                 = "Canal anal y ano",
+  "APPENDIX"                          = "Apendice",
+  "BASE OF TONGUE"                    = "Base de la lengua",
+  "BLOOD"                             = "Sangre",
+  "BONES & JOINTS (EXCL SKULL AND FACE)" = "Huesos y articulaciones (excl. craneo y cara)",
+  "BONES & JOINTS (EXCL SKULL AND FACE" = "Huesos y articulaciones (excl. craneo y cara)",
+  "BONES OF SKULL AND FACE"           = "Huesos del craneo y cara",
+  "BRAIN"                             = "Encefalo",
+  "BREAST"                            = "Mama",
+  "CEREBELLUM"                        = "Cerebelo",
+  "CERVIX UTERI"                      = "Cervix uterino",
+  "CONNECTIVE & SOFT TISSUE"          = "Tejido conectivo y blando",
+  "CORPUS UTERI"                      = "Cuerpo uterino",
+  "CRANIOPHARYNGEAL DUCT"             = "Conducto craneofaringeo",
+  "EPIDIDYMIS"                        = "Epididimo",
+  "ESOPHAGUS"                         = "Esofago",
+  "EYE"                               = "Ojo",
+  "EYEBALL"                           = "Globo ocular",
+  "FALLOPIAN TUBE"                    = "Trompa de Falopio",
+  "GALLBLADDER & EXTRAHEPATIC BILE DUCTS" = "Vesicula y vias biliares extrahepaticas",
+  "GUM"                               = "Encia",
+  "HEART"                             = "Corazon",
+  "HYPOPHARYNX"                       = "Hipofaringe",
+  "ILL-DEFINED"                       = "Mal definido",
+  "INTRAHEPATIC BILE DUCTS"           = "Vias biliares intrahepaticas",
+  "KIDNEY"                            = "Rinon",
+  "LARGE INTESTINE"                   = "Intestino grueso",
+  "LARYNX"                            = "Laringe",
+  "LIP"                               = "Labio",
+  "LIVER"                             = "Higado",
+  "LUNG & BRONCHUS"                   = "Pulmon y bronquios",
+  "LYMPH NODES"                       = "Ganglios linfaticos",
+  "MANDIBLE"                          = "Mandibula",
+  "MEDIASTINUM"                       = "Mediastino",
+  "MENINGES (CEREBRAL)"               = "Meninges (cerebrales)",
+  "MENINGES (CEREBRAL"                = "Meninges (cerebrales)",
+  "MIDDLE EAR"                        = "Oido medio",
+  "NASAL CAVITY (INCLUDING NASAL CARTILAGE)" = "Cavidad nasal (incluye cartilago nasal)",
+  "NASOPHARYNX (EXCL POSTERIOR WALL)" = "Nasofaringe (excl. pared posterior)",
+  "OROPHARNYX"                        = "Orofaringe",
+  "ORBIT & LACRIMAL GLAND"            = "Orbita y glandula lagrimal",
+  "OTHER ENDOCRINE GLANDS"            = "Otras glandulas endocrinas",
+  "OTHER FEMALE GENITAL (EXCL FALLOPIAN TUBE)" = "Otros organos genitales femeninos (excl. trompa)",
+  "OTHER NERVOUS SYSTEM"              = "Otro sistema nervioso",
+  "OTHER URINARY ORGANS"              = "Otros organos urinarios",
+  "OVARY"                             = "Ovario",
+  "PANCREAS"                          = "Pancreas",
+  "PARATHYROID GLAND"                 = "Glandula paratiroides",
+  "PENIS"                             = "Pene",
+  "PERIPHERAL NERVES"                 = "Nervios perifericos",
+  "PHARYNX"                           = "Faringe",
+  "PINEAL GLAND"                      = "Glandula pineal",
+  "PITUITARY GLAND"                   = "Glandula hipofisis",
+  "PLACENTA"                          = "Placenta",
+  "PLEURA"                            = "Pleura",
+  "POSTERIOR WALL OF NASOPHARYNX"     = "Pared posterior de nasofaringe",
+  "PROSTATE GLAND"                    = "Prostata",
+  "RECTUM"                            = "Recto",
+  "RENAL PELVIS"                      = "Pelvis renal",
+  "RESPIRATORY"                       = "Sistema respiratorio (otro)",
+  "RETICULO-ENDOTHELIAL"              = "Sistema reticuloendotelial",
+  "RETINA"                            = "Retina",
+  "RETROPERITONEUM & PERITONEUM"      = "Retroperitoneo y peritoneo",
+  "SALIVARY GLAND"                    = "Glandula salival",
+  "SCROTUM"                           = "Escroto",
+  "SINUSES"                           = "Senos paranasales",
+  "SKIN"                              = "Piel",
+  "SMALL INTESTINE"                   = "Intestino delgado",
+  "SPLEEN"                            = "Bazo",
+  "STOMACH"                           = "Estomago",
+  "TESTIS"                            = "Testiculo",
+  "THYMUS"                            = "Timo",
+  "THYROID GLAND"                     = "Glandula tiroides",
+  "TONGUE (EXCL BASE OF TONGUE)"      = "Lengua (excl. base de lengua)",
+  "TRACHEA"                           = "Traquea",
+  "UNKNOWN"                           = "Desconocido",
+  "UNSPECIFIED DIGEST. ORGANS"        = "Organos digestivos no especificados",
+  "URINARY BLADDER"                   = "Vejiga urinaria",
+  "UTERUS"                            = "Utero",
+  "VAGINA & LABIA"                    = "Vagina y labios",
+  "VENTRICLE"                         = "Ventriculo",
+  "VULVA"                             = "Vulva"
+)
+
+#' Anatomical sites in Spanish. Translates each ICD-O-3 site description via
+#' .SITE_ES; falls back to a Title-Case version of the original if no
+#' translation is registered (rather than dropping the row).
 lookup_sites <- function() {
   base <- character(0)
   d <- lookup_icdo3()
   if (length(d) && nrow(d) > 0L) {
-    # try the canonical name first, then any column that looks site-ish
     cands <- intersect(c("Site.Description","Site Description"), names(d))
     if (!length(cands)) {
       cands <- grep("site", names(d), ignore.case = TRUE, value = TRUE)
     }
     if (length(cands)) base <- unique(d[[cands[1]]])
   }
-  extras <- c("EXTREMIDAD SUPERIOR DERECHA","EXTREMIDAD SUPERIOR IZQUIERDA",
-              "EXTREMIDAD INFERIOR DERECHA","EXTREMIDAD INFERIOR IZQUIERDA")
-  sort(unique(c(base[nzchar(base)], extras)))
+  base <- gsub("^[\"\ufeff]+|[\"\ufeff]+$", "", base)
+  base <- base[nzchar(base)]
+  translated <- vapply(base, function(x) {
+    es <- .SITE_ES[[x]]
+    if (!is.null(es) && nzchar(es)) return(es)
+    # fallback: Title Case the leftover English so it doesn't look raw
+    paste0(substr(x,1,1), tolower(substr(x,2,nchar(x))))
+  }, character(1), USE.NAMES = FALSE)
+  extras <- c("Extremidad superior derecha","Extremidad superior izquierda",
+              "Extremidad inferior derecha","Extremidad inferior izquierda",
+              "Cabeza y cuello (otro)","Multiples sitios / metastasico")
+  sort(unique(c(translated, extras)))
 }
 
+#' Spanish translation map for the OncoTree tumour catalogue.
+#' DB still stores the English code (so analyses across hospitals stay
+#' comparable); only the displayed label is in Spanish.
+.ONCOTREE_ES <- c(
+  "Adenocarcinoma In Situ"                 = "Adenocarcinoma in situ",
+  "Adrenal Gland Cancer"                   = "Cancer de glandula suprarrenal",
+  "Adrenocortical Adenoma"                 = "Adenoma adrenocortical",
+  "Adrenocortical Carcinoma"               = "Carcinoma adrenocortical",
+  "Ampullary Cancer"                       = "Cancer de ampula de Vater",
+  "Ampullary Carcinoma"                    = "Carcinoma de ampula de Vater",
+  "Anal Cancer"                            = "Cancer anal",
+  "Angiomatoid Fibrous Histiocytoma"       = "Histiocitoma fibroso angiomatoide",
+  "Appendiceal Cancer"                     = "Cancer apendicular",
+  "B-Lymphoblastic Leukemia/Lymphoma"      = "Leucemia/linfoma linfoblastico B",
+  "Biliary Tract Cancer"                   = "Cancer de vias biliares",
+  "Bladder Cancer"                         = "Cancer de vejiga",
+  "Bladder/Urinary Tract Cancer"           = "Cancer de vejiga / vias urinarias",
+  "Blastic Plasmacytoid Dendritic Cell Neoplasm" = "Neoplasia blastica de celulas dendriticas plasmocitoides",
+  "Blood Cancer"                           = "Neoplasia hematologica",
+  "Bone Cancer"                            = "Cancer oseo",
+  "Bowel Cancer"                           = "Cancer intestinal",
+  "Breast Cancer"                          = "Cancer de mama",
+  "Breast Sarcoma"                         = "Sarcoma mamario",
+  "CNS Cancer"                             = "Cancer del SNC",
+  "CNS/Brain Cancer"                       = "Cancer del SNC / encefalo",
+  "Cancer of Unknown Primary"              = "Cancer de origen primario desconocido",
+  "Cervical Cancer"                        = "Cancer cervicouterino",
+  "Choroid Plexus Tumor"                   = "Tumor del plexo coroideo",
+  "Clear Cell Sarcoma of Kidney"           = "Sarcoma de celulas claras del rinon",
+  "Colorectal Cancer"                      = "Cancer colorrectal",
+  "Desmoplastic/Nodular Medulloblastoma"   = "Meduloblastoma desmoplasico/nodular",
+  "Embryonal Tumor"                        = "Tumor embrionario",
+  "Endometrial Cancer"                     = "Cancer endometrial",
+  "Esophageal/Stomach Cancer"              = "Cancer esofagico / gastrico",
+  "Esophagogastric Cancer"                 = "Cancer esofagogastrico",
+  "Eye Cancer"                             = "Cancer ocular",
+  "Gastrointestinal Neuroendocrine Tumor"  = "Tumor neuroendocrino gastrointestinal",
+  "Gastrointestinal Neuroendocrine Tumors of the Esophagus/Stomach" = "Tumor neuroendocrino esofago/estomago",
+  "Gastrointestinal Stromal Tumor"         = "Tumor del estroma gastrointestinal (GIST)",
+  "Germ Cell Tumor"                        = "Tumor de celulas germinales",
+  "Gestational Trophoblastic Disease"      = "Enfermedad trofoblastica gestacional",
+  "Glioma"                                 = "Glioma",
+  "Head and Neck Cancer"                   = "Cancer de cabeza y cuello",
+  "Hepatobiliary Cancer"                   = "Cancer hepatobiliar",
+  "Histiocytosis"                          = "Histiocitosis",
+  "Hodgkin Lymphoma"                       = "Linfoma de Hodgkin",
+  "Infantile Fibrosarcoma"                 = "Fibrosarcoma infantil",
+  "Kidney Cancer"                          = "Cancer renal",
+  "Lacrimal Gland Tumor"                   = "Tumor de glandula lagrimal",
+  "Large Cell/Anaplastic Medulloblastoma"  = "Meduloblastoma de celulas grandes / anaplasico",
+  "Leukemia"                               = "Leucemia",
+  "Liver Cancer"                           = "Cancer hepatico",
+  "Lung Cancer"                            = "Cancer de pulmon",
+  "Lymphatic Cancer"                       = "Cancer linfatico",
+  "Malignant Glomus Tumor"                 = "Tumor glomico maligno",
+  "Malignant Rhabdoid Tumor of the Liver"  = "Tumor rabdoide maligno hepatico",
+  "Mastocytosis"                           = "Mastocitosis",
+  "Mature B-Cell Neoplasms"                = "Neoplasias maduras de celulas B",
+  "Mature T and NK Neoplasms"              = "Neoplasias maduras de celulas T/NK",
+  "Medulloblastoma"                        = "Meduloblastoma",
+  "Medulloblastoma with Extensive Nodularity" = "Meduloblastoma con nodularidad extensa",
+  "Melanocytoma"                           = "Melanocitoma",
+  "Melanoma"                               = "Melanoma",
+  "Mesothelioma"                           = "Mesotelioma",
+  "Miscellaneous Brain Tumor"              = "Tumor cerebral (otro)",
+  "Miscellaneous Neuroepithelial Tumor"    = "Tumor neuroepitelial (otro)",
+  "Myelodysplastic Syndromes"              = "Sindromes mielodisplasicos",
+  "Myelodysplastic/Myeloproliferative Neoplasms" = "Neoplasias mielodisplasicas/mieloproliferativas",
+  "Myeloid Neoplasms with Germ Line Predisposition" = "Neoplasias mieloides con predisposicion germinal",
+  "Myeloproliferative Neoplasms"           = "Neoplasias mieloproliferativas",
+  "Myofibromatosis"                        = "Miofibromatosis",
+  "Nerve Sheath Tumor"                     = "Tumor de la vaina nerviosa",
+  "Non-Hodgkin Lymphoma"                   = "Linfoma no Hodgkin",
+  "Non-Small Cell Lung Cancer"             = "Cancer de pulmon de celulas no pequenas (CPCNP)",
+  "Other Cancer"                           = "Otro cancer",
+  "Ovarian Cancer"                         = "Cancer de ovario",
+  "Ovarian/Fallopian Tube Cancer"          = "Cancer de ovario / trompa de Falopio",
+  "Pancreatic Cancer"                      = "Cancer de pancreas",
+  "Parathyroid Cancer"                     = "Cancer paratiroideo",
+  "Penile Cancer"                          = "Cancer de pene",
+  "Peripheral Nervous System"              = "Sistema nervioso periferico",
+  "Peripheral Nervous System Cancer"       = "Cancer del sistema nervioso periferico",
+  "Peritoneal Cancer"                      = "Cancer peritoneal",
+  "Pheochromocytoma"                       = "Feocromocitoma",
+  "Pineal Tumor"                           = "Tumor pineal",
+  "Pleural Cancer"                         = "Cancer pleural",
+  "Posttransplant Lymphoproliferative Disorders" = "Trastorno linfoproliferativo post-trasplante",
+  "Primary CNS Melanocytic Tumors"         = "Tumores melanociticos primarios del SNC",
+  "Prostate Cancer"                        = "Cancer de prostata",
+  "Renal Cell Carcinoma"                   = "Carcinoma de celulas renales",
+  "Renal Neuroendocrine Tumor"             = "Tumor neuroendocrino renal",
+  "Retinoblastoma"                         = "Retinoblastoma",
+  "Rhabdoid Cancer"                        = "Cancer rabdoide",
+  "Salivary Gland Cancer"                  = "Cancer de glandulas salivales",
+  "Sellar Tumor"                           = "Tumor selar",
+  "Sex Cord Stromal Tumor"                 = "Tumor de cordones sexuales / estroma",
+  "Sialoblastoma"                          = "Sialoblastoma",
+  "Skin Cancer"                            = "Cancer de piel",
+  "Small Bowel Cancer"                     = "Cancer de intestino delgado",
+  "Small Cell Lung Cancer"                 = "Cancer de pulmon de celulas pequenas (CPCP)",
+  "Soft Tissue Cancer"                     = "Cancer de tejidos blandos",
+  "Soft Tissue Sarcoma"                    = "Sarcoma de tejidos blandos",
+  "T-Lymphoblastic Leukemia/Lymphoma"      = "Leucemia/linfoma linfoblastico T",
+  "Testicular Cancer"                      = "Cancer testicular",
+  "Thymic Cancer"                          = "Cancer timico",
+  "Thymic Tumor"                           = "Tumor timico",
+  "Thyroid Cancer"                         = "Cancer de tiroides",
+  "Tubular Adenoma of the Colon"           = "Adenoma tubular de colon",
+  "Undifferentiated Embryonal Sarcoma of the Liver" = "Sarcoma embrionario indiferenciado del higado",
+  "Uterine Cancer"                         = "Cancer uterino",
+  "Uterine Sarcoma"                        = "Sarcoma uterino",
+  "Vaginal Cancer"                         = "Cancer vaginal",
+  "Vulvar Carcinoma"                       = "Carcinoma vulvar",
+  "Vulvar/Vaginal Cancer"                  = "Cancer vulvar / vaginal",
+  "Wilms Tumor"                            = "Tumor de Wilms"
+)
+
+#' Returns a named vector: names = Spanish display label, values = English
+#' OncoTree code. The selectizeInput stores the *value* (English), so
+#' downstream queries and analytics keep their canonical key.
 lookup_oncotree <- function() {
   f <- .local_extdata("tumorlist.csv")
   if (!nzchar(f)) return(character(0))
@@ -121,8 +343,15 @@ lookup_oncotree <- function() {
                 error = function(e) tryCatch(utils::read.csv(f),
                                              error = function(e) NULL))
   if (is.null(x) || ncol(x) < 2) return(character(0))
-  vals <- x[[2]]
-  sort(unique(vals[nzchar(vals)]))
+  vals <- sort(unique(x[[2]][nzchar(x[[2]])]))
+  labels <- vapply(vals, function(v) {
+    es <- .ONCOTREE_ES[[v]]
+    if (!is.null(es) && nzchar(es)) es else v
+  }, character(1), USE.NAMES = FALSE)
+  out <- vals
+  names(out) <- labels
+  # Sort by Spanish label so the dropdown is alphabetical for the user.
+  out[order(names(out))]
 }
 
 #' Tumours that may be bilateral (drives the "Tumor bilateral" checkbox UX).

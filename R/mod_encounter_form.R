@@ -217,6 +217,89 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
       )
     ),
 
+    # ---- Recurrence / progression specifics -----------------------------
+    # Only meaningful when this encounter IS a recurrence/progression. The
+    # TNM box below is reused (it doubles as rTNM). ECOG already lives on
+    # each encounter row, so capturing it inside step-2 does NOT overwrite
+    # the initial_dx ECOG -- it is a separate row in the encounters table.
+    shiny::conditionalPanel(
+      condition = sprintf("input['%s'] == 'recurrence'", ns("encounter_type")),
+      bs4Dash::box(
+        title = shiny::tagList(shiny::icon("triangle-exclamation"),
+                               " Datos de la recurrencia / progresion"),
+        width = 12, collapsible = TRUE, status = "danger", solidHeader = TRUE,
+        shiny::fluidRow(
+          shiny::column(4,
+            shinyWidgets::pickerInput(ns("recurrence_type"),
+              "Patron de recurrencia",
+              choices = c("(seleccione)"   = "",
+                          "Local"          = "local",
+                          "Regional (ganglionar)" = "regional",
+                          "A distancia (metastasica)" = "distancia",
+                          "Mixta (local + distancia)" = "mixta",
+                          "Desconocida"    = "desconocida"),
+              selected = "")),
+          shiny::column(4,
+            shinyWidgets::pickerInput(ns("recurrence_confirmation"),
+              "Metodo de confirmacion",
+              choices = c("(seleccione)"           = "",
+                          "Imagen"                 = "imagen",
+                          "Biopsia (histologica)"  = "biopsia",
+                          "Citologia"              = "citologia",
+                          "Quirurgica"             = "quirurgico",
+                          "Marcador serico"        = "marcador_serologico",
+                          "Clinico"                = "clinico"),
+              selected = "")),
+          shiny::column(4,
+            shinyWidgets::awesomeCheckbox(ns("biopsy_done"),
+              "Re-biopsia obtenida (re-perfilado molecular)", FALSE))
+        ),
+        # Sites of distant disease (only when distancia / mixta) -----------
+        shiny::conditionalPanel(
+          condition = sprintf(
+            "['distancia','mixta'].indexOf(input['%s']) > -1",
+            ns("recurrence_type")),
+          shinyWidgets::pickerInput(ns("recurrence_sites"),
+            "Sitios de enfermedad a distancia",
+            choices = c("Cerebro / SNC"            = "cerebro",
+                        "Hueso"                    = "hueso",
+                        "Pulmon"                   = "pulmon",
+                        "Higado"                   = "higado",
+                        "Peritoneo"                = "peritoneo",
+                        "Pleura"                   = "pleura",
+                        "Ganglios distantes"       = "ganglios_distantes",
+                        "Suprarrenal"              = "suprarrenal",
+                        "Piel / partes blandas"    = "piel",
+                        "Ovario"                   = "ovario",
+                        "Otro"                     = "otro"),
+            multiple = TRUE,
+            options = list(`actions-box` = TRUE,
+                           `live-search` = TRUE,
+                           `selected-text-format` = "count > 2",
+                           `none-selected-text` = "Seleccione sitio(s)"))
+        ),
+        shiny::fluidRow(
+          shiny::column(6,
+            shinyWidgets::pickerInput(ns("prior_treatment_response"),
+              "Respuesta a la ultima linea de tratamiento",
+              choices = c("(seleccione)"  = "",
+                          "Completa"      = "completa",
+                          "Parcial"       = "parcial",
+                          "Estable"       = "estable",
+                          "Progresion"    = "progresion",
+                          "No evaluable"  = "no_evaluable"),
+              selected = ""))
+        ),
+        shiny::div(class = "alert alert-info small mb-0",
+          shiny::icon("circle-info"), " ",
+          shiny::strong("Re-estadiaje:"),
+          " complete a continuacion el rTNM, ECOG actual y el panel ",
+          "molecular si hubo nueva biopsia. ",
+          "Estos valores se guardan en este encuentro y NO sobreescriben ",
+          "los del diagnostico inicial.")
+      )
+    ),
+
     # ---- Tumor characterization ----------------------------------------
     shiny::conditionalPanel(
       condition = sprintf("['initial_dx','recurrence'].indexOf(input['%s']) > -1",
@@ -242,9 +325,12 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
       ),
 
     # ---- TNM staging ---------------------------------------------------
+    # Title flips to "rTNM (re-estadiaje)" for recurrence encounters so the
+    # clinician sees clearly that they are restaging, not editing the
+    # initial dx TNM.
       bs4Dash::box(
         title = shiny::tagList(shiny::icon("layer-group"),
-                               " Clasificacion TNM"),
+                               shiny::textOutput(ns("tnm_title"), inline = TRUE)),
         width = 12, collapsible = TRUE, status = "primary", solidHeader = TRUE,
         shiny::fluidRow(
           shiny::column(8,
@@ -699,6 +785,16 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
     })
     shiny::outputOptions(output, "step2_title", suspendWhenHidden = FALSE)
 
+    # TNM title -- becomes "rTNM (re-estadiaje)" on recurrence rows so the
+    # clinician sees this is a re-stage, not an edit of the dx TNM.
+    output$tnm_title <- shiny::renderText({
+      if (isTRUE(input$encounter_type == "recurrence"))
+        " Re-estadiaje rTNM (recurrencia / progresion)"
+      else
+        " Clasificacion TNM"
+    })
+    shiny::outputOptions(output, "tnm_title", suspendWhenHidden = FALSE)
+
     # ---- Auto-prefill downstream dates from encounter_date ---------------
     # When the user enters the dx/event date, mirror it into surgery_date,
     # discharge_date and death_date *only if those are still empty*. Avoids
@@ -966,6 +1062,26 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
         treatment_intent = if (isTRUE(input$encounter_type == "treatment"))
                              nz(input$treatment_intent) else NA,
 
+        # Recurrence-specific fields (nullable; only meaningful when
+        # encounter_type == 'recurrence'). recurrence_sites is an array.
+        recurrence_type          = if (isTRUE(input$encounter_type == "recurrence"))
+                                     nz(input$recurrence_type) else NA,
+        recurrence_sites         = if (isTRUE(input$encounter_type == "recurrence")
+                                       && length(input$recurrence_sites))
+                                     input$recurrence_sites else NA,
+        recurrence_confirmation  = if (isTRUE(input$encounter_type == "recurrence"))
+                                     nz(input$recurrence_confirmation) else NA,
+        biopsy_done              = if (isTRUE(input$encounter_type == "recurrence"))
+                                     isTRUE(input$biopsy_done) else NA,
+        prior_treatment_response = if (isTRUE(input$encounter_type == "recurrence"))
+                                     nz(input$prior_treatment_response) else NA,
+        time_to_recurrence_days  = if (isTRUE(input$encounter_type == "recurrence")) {
+                                     dx <- suppressWarnings(as.Date(p$fecha_dx %||% NA))
+                                     ev <- suppressWarnings(as.Date(input$encounter_date))
+                                     if (!is.na(dx) && !is.na(ev))
+                                       as.integer(ev - dx) else NA_integer_
+                                   } else NA,
+
         created_by     = u$user_id
       )
     })
@@ -1086,11 +1202,28 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
 
 #' Build a selectize choices object that prepends "Recientes" above the
 #' full list. Returns the flat vector if there are no recents.
+#'
+#' Preserves names() if `full` is a named vector (label = value), as is
+#' the case for the OncoTree picker where Spanish labels map to English
+#' codes. Without this, as.character() would strip names and the user
+#' would see raw codes instead of translations.
 .with_recent_optgroup <- function(full, recent) {
-  full <- as.character(full)
-  recent <- intersect(as.character(recent), full)
-  if (!length(recent)) return(full)
-  list(Recientes = recent, Todos = setdiff(full, recent))
+  if (is.list(full)) return(full)              # already grouped
+  if (is.null(full) || !length(full)) return(character(0))
+  recent <- as.character(recent)
+  recent <- recent[nzchar(recent)]
+  codes  <- unname(as.character(full))
+  rec_in <- intersect(recent, codes)
+  if (!length(rec_in)) return(full)
+  if (!is.null(names(full))) {
+    rec_idx <- match(rec_in, full)
+    rec_idx <- rec_idx[!is.na(rec_idx)]
+    if (!length(rec_idx)) return(full)
+    rec_full <- full[rec_idx]
+    rest     <- full[setdiff(seq_along(full), rec_idx)]
+    return(list(Recientes = rec_full, Todos = rest))
+  }
+  list(Recientes = rec_in, Todos = setdiff(codes, rec_in))
 }
 
 #' Heuristic: is this payload "empty enough" that we should not autosave?
