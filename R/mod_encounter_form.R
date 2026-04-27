@@ -728,58 +728,64 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
     })
 
     # Populate selectizes server-side (memory-friendly), prepending the user's
-    # "Recientes" group to the four heaviest pickers.
-    # IMPORTANT: pass `selected = ""` explicitly on every updateSelectizeInput
-    # call. Otherwise selectize.js falls back to "first option" when its
-    # choices change, which made pickers look pre-filled with a Recientes /
-    # alphabetically-first value the user never picked.
+    # "Recientes" group to the heaviest pickers.
+    #
+    # IMPORTANT: every input read inside this block is wrapped in isolate() so
+    # this observer reacts ONLY to `recents()` changes, never to the user
+    # picking a value. Without isolate(), each pick re-fired the observer,
+    # which re-rendered the selectize and produced the flicker / loss-of-
+    # selection bug. We also intentionally do NOT pass `selected = ""` (which
+    # would clobber a prefilled or in-progress selection) -- selectize keeps
+    # whatever value the input already has when only `choices` changes.
     shiny::observe({
       r <- recents()
-      keep_sel <- function(id) {
-        cur <- input[[id]] %||% ""
-        if (!nzchar(cur)) "" else cur
-      }
-      sites <- lookup_sites()
-      shiny::updateSelectizeInput(session, "primary_site",
-        choices = .with_recent_optgroup(sites, r$primary_site),
-        selected = keep_sel("primary_site"), server = TRUE)
-      onco <- lookup_oncotree()
-      shiny::updateSelectizeInput(session, "oncotree",
-        choices = .with_recent_optgroup(onco, r$oncotree),
-        selected = keep_sel("oncotree"), server = TRUE)
-      icdo3 <- lookup_icdo3()
-      morph_col <- intersect(c("Histology.Behavior.Description",
-                               "Histology/Behavior Description"), names(icdo3))
-      if (!length(morph_col)) {
-        morph_col <- grep("histology", names(icdo3),
-                          ignore.case = TRUE, value = TRUE)
-      }
-      if (length(morph_col)) {
-        morph <- sort(unique(icdo3[[morph_col[1]]]))
-        shiny::updateSelectizeInput(session, "icdo3_morph",
-          choices = .with_recent_optgroup(morph, r$icdo3_morph),
-          selected = keep_sel("icdo3_morph"), server = TRUE)
-      }
-      drugs <- lookup_drugs()
-      if ("x" %in% names(drugs)) {
-        ch <- sort(drugs$x)
-        shiny::updateSelectizeInput(session, "chemo_drugs",
-          choices = .with_recent_optgroup(ch, r$chemo_drugs),
-          selected = input$chemo_drugs %||% character(0), server = TRUE)
-      }
-      # Surgery procedures: curated, grouped by anatomic site. We keep
-      # recents at the top by prepending a "Recientes" group when present.
-      proc <- lookup_oncology_procedures()
-      if (length(proc)) {
-        recents_proc <- intersect(as.character(r$surgery_cpt %||% character(0)),
-                                  unname(unlist(proc)))
-        if (length(recents_proc)) {
-          proc <- c(list(Recientes = recents_proc), proc)
+      shiny::isolate({
+        # primary_site (~80) and oncotree (~110) are small enough to live
+        # client-side; we set server = FALSE so prefill (selected = X) works
+        # reliably -- with server = TRUE selectize ignores setValue() unless
+        # X happens to be in the AJAX-loaded chunk currently visible.
+        sites <- lookup_sites()
+        shiny::updateSelectizeInput(session, "primary_site",
+          choices = .with_recent_optgroup(sites, r$primary_site),
+          server = FALSE)
+        onco <- lookup_oncotree()
+        shiny::updateSelectizeInput(session, "oncotree",
+          choices = .with_recent_optgroup(onco, r$oncotree),
+          server = FALSE)
+        icdo3 <- lookup_icdo3()
+        morph_col <- intersect(c("Histology.Behavior.Description",
+                                 "Histology/Behavior Description"), names(icdo3))
+        if (!length(morph_col)) {
+          morph_col <- grep("histology", names(icdo3),
+                            ignore.case = TRUE, value = TRUE)
         }
-        shinyWidgets::updatePickerInput(session, "surgery_cpt", choices = proc,
-          selected = intersect(input$surgery_cpt %||% character(0),
-                               unname(unlist(proc))))
-      }
+        if (length(morph_col)) {
+          morph <- sort(unique(icdo3[[morph_col[1]]]))
+          shiny::updateSelectizeInput(session, "icdo3_morph",
+            choices = .with_recent_optgroup(morph, r$icdo3_morph),
+            server = TRUE)
+        }
+        drugs <- lookup_drugs()
+        if ("x" %in% names(drugs)) {
+          ch <- sort(drugs$x)
+          shiny::updateSelectizeInput(session, "chemo_drugs",
+            choices = .with_recent_optgroup(ch, r$chemo_drugs),
+            server = TRUE)
+        }
+        # Surgery procedures: curated, grouped by anatomic site. We keep
+        # recents at the top by prepending a "Recientes" group when present.
+        proc <- lookup_oncology_procedures()
+        if (length(proc)) {
+          recents_proc <- intersect(as.character(r$surgery_cpt %||% character(0)),
+                                    unname(unlist(proc)))
+          if (length(recents_proc)) {
+            proc <- c(list(Recientes = recents_proc), proc)
+          }
+          shinyWidgets::updatePickerInput(session, "surgery_cpt", choices = proc,
+            selected = intersect(input$surgery_cpt %||% character(0),
+                                 unname(unlist(proc))))
+        }
+      })
     })
 
     # ---- Pre-fill tumor fields from initial_dx for recurrence encounters --
@@ -814,8 +820,25 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
                                     selected = dx$oncotree)
       }
       if (!is.null(dx$icdo3_morph) && nzchar(dx$icdo3_morph %||% "")) {
-        shiny::updateSelectizeInput(session, "icdo3_morph",
-                                    selected = dx$icdo3_morph)
+        # icdo3_morph stays server=TRUE (12k items). For the prefill to
+        # actually display we have to (re)build the choices set including
+        # the value we want to select; otherwise selectize.js drops the
+        # setValue() call because the option isn't in its rendered chunk.
+        icdo3 <- lookup_icdo3()
+        morph_col <- intersect(c("Histology.Behavior.Description",
+                                 "Histology/Behavior Description"),
+                               names(icdo3))
+        if (!length(morph_col)) {
+          morph_col <- grep("histology", names(icdo3),
+                            ignore.case = TRUE, value = TRUE)
+        }
+        if (length(morph_col)) {
+          morph <- sort(unique(icdo3[[morph_col[1]]]))
+          shiny::updateSelectizeInput(session, "icdo3_morph",
+            choices  = morph,
+            selected = dx$icdo3_morph,
+            server   = TRUE)
+        }
       }
       .prefill_done(TRUE)
     })
