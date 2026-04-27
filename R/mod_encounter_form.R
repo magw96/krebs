@@ -435,12 +435,15 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
       )
     ),
 
-    # ---- Treatment line + intent (only for treatment encounters) -------
+    # ---- Treatment line + intent (initial_dx / recurrence / treatment) -
     # Tracking 1L/2L/3L lines and their intent is the cornerstone of
-    # downstream PFS / OS-by-line analyses. We surface it as the FIRST
-    # control inside any treatment encounter so it's never forgotten.
+    # downstream PFS / OS-by-line analyses. The intent applies to the
+    # WHOLE line (chemo + RT + immuno + hormonal etc.) so we render it
+    # ONCE here and remove the redundant per-modality intent radios.
     shiny::conditionalPanel(
-      condition = sprintf("input['%s'] == 'treatment'", ns("encounter_type")),
+      condition = sprintf(
+        "['initial_dx','recurrence','treatment'].indexOf(input['%s']) > -1",
+        ns("encounter_type")),
       bs4Dash::box(
         title = shiny::tagList(shiny::icon("layer-group"),
                                " Linea e intencion del tratamiento"),
@@ -492,11 +495,10 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
         shiny::conditionalPanel(
           condition = sprintf("input['%s']", ns("chemo")),
           shiny::div(class = "ml-4",
-            shiny::radioButtons(ns("chemo_intent"), "Intencion",
-              choices = c("Neoadyuvante" = "neoadyuvante",
-                          "Adyuvante"    = "adyuvante",
-                          "Paliativo"    = "paliativo"),
-              selected = character(0), inline = TRUE),
+            # NB: la intencion ya se pidio una sola vez en "Linea e intencion
+            # del tratamiento" y aplica a toda la linea (QT + RT + inmuno +
+            # hormonal). El campo `chemo_intent` se hereda server-side desde
+            # `treatment_intent` para mantener compatibilidad con la BD.
             shiny::selectizeInput(ns("chemo_drugs"), "Medicamentos",
               choices = NULL, multiple = TRUE,
               options = list(placeholder = "Buscar farmacos...")),
@@ -727,14 +729,24 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
 
     # Populate selectizes server-side (memory-friendly), prepending the user's
     # "Recientes" group to the four heaviest pickers.
+    # IMPORTANT: pass `selected = ""` explicitly on every updateSelectizeInput
+    # call. Otherwise selectize.js falls back to "first option" when its
+    # choices change, which made pickers look pre-filled with a Recientes /
+    # alphabetically-first value the user never picked.
     shiny::observe({
       r <- recents()
+      keep_sel <- function(id) {
+        cur <- input[[id]] %||% ""
+        if (!nzchar(cur)) "" else cur
+      }
       sites <- lookup_sites()
       shiny::updateSelectizeInput(session, "primary_site",
-        choices = .with_recent_optgroup(sites, r$primary_site), server = TRUE)
+        choices = .with_recent_optgroup(sites, r$primary_site),
+        selected = keep_sel("primary_site"), server = TRUE)
       onco <- lookup_oncotree()
       shiny::updateSelectizeInput(session, "oncotree",
-        choices = .with_recent_optgroup(onco, r$oncotree), server = TRUE)
+        choices = .with_recent_optgroup(onco, r$oncotree),
+        selected = keep_sel("oncotree"), server = TRUE)
       icdo3 <- lookup_icdo3()
       morph_col <- intersect(c("Histology.Behavior.Description",
                                "Histology/Behavior Description"), names(icdo3))
@@ -745,13 +757,15 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
       if (length(morph_col)) {
         morph <- sort(unique(icdo3[[morph_col[1]]]))
         shiny::updateSelectizeInput(session, "icdo3_morph",
-          choices = .with_recent_optgroup(morph, r$icdo3_morph), server = TRUE)
+          choices = .with_recent_optgroup(morph, r$icdo3_morph),
+          selected = keep_sel("icdo3_morph"), server = TRUE)
       }
       drugs <- lookup_drugs()
       if ("x" %in% names(drugs)) {
         ch <- sort(drugs$x)
         shiny::updateSelectizeInput(session, "chemo_drugs",
-          choices = .with_recent_optgroup(ch, r$chemo_drugs), server = TRUE)
+          choices = .with_recent_optgroup(ch, r$chemo_drugs),
+          selected = input$chemo_drugs %||% character(0), server = TRUE)
       }
       # Surgery procedures: curated, grouped by anatomic site. We keep
       # recents at the top by prepending a "Recientes" group when present.
@@ -767,6 +781,49 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
                                unname(unlist(proc))))
       }
     })
+
+    # ---- Pre-fill tumor fields from initial_dx for recurrence encounters --
+    # When the clinician opens a recurrence form for a patient whose initial
+    # diagnosis we already have on file, primary_site / oncotree /
+    # icdo3_morph default to the values from that initial_dx encounter (most
+    # recurrences happen at the same site with the same histology). They
+    # remain editable for the rare 2nd-primary or histologic-divergence case.
+    .prefill_done <- shiny::reactiveVal(FALSE)
+    shiny::observe({
+      if (!isTRUE(input$encounter_type == "recurrence")) return()
+      if (isTRUE(.prefill_done())) return()
+      p <- if (is.function(patient)) patient() else patient
+      if (is.null(p) || is.null(p$mrn)) return()
+      u <- .u(); if (is.null(u) || !.has_pool()) return()
+      dx <- tryCatch(
+        db_read(pool, u,
+          "SELECT primary_site, oncotree, icdo3_morph
+             FROM encounters
+            WHERE hospital_id = $1 AND mrn = $2
+              AND encounter_type = 'initial_dx'
+            ORDER BY encounter_date ASC LIMIT 1",
+          params = list(u$hospital_id, p$mrn)),
+        error = function(e) NULL)
+      if (is.null(dx) || nrow(dx) == 0L) return()
+      if (!is.null(dx$primary_site) && nzchar(dx$primary_site %||% "")) {
+        shiny::updateSelectizeInput(session, "primary_site",
+                                    selected = dx$primary_site)
+      }
+      if (!is.null(dx$oncotree) && nzchar(dx$oncotree %||% "")) {
+        shiny::updateSelectizeInput(session, "oncotree",
+                                    selected = dx$oncotree)
+      }
+      if (!is.null(dx$icdo3_morph) && nzchar(dx$icdo3_morph %||% "")) {
+        shiny::updateSelectizeInput(session, "icdo3_morph",
+                                    selected = dx$icdo3_morph)
+      }
+      .prefill_done(TRUE)
+    })
+    # Reset the prefill latch whenever the user switches encounter type or
+    # patient, so re-opening a recurrence form for a different patient works.
+    shiny::observeEvent(list(input$encounter_type, patient()), {
+      .prefill_done(FALSE)
+    }, ignoreInit = TRUE)
 
     # Live TNM string.
     output$tnm_str <- shiny::renderText({
@@ -1010,7 +1067,10 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
         referral_source       = nz(input$referral_source),
 
         chemo            = isTRUE(input$chemo),
-        chemo_intent     = nz(input$chemo_intent),
+        # `chemo_intent` ya no tiene su propio radio: se hereda de la
+        # intencion de la linea (treatment_intent) que aplica a toda la
+        # combinacion de tratamientos del encuentro.
+        chemo_intent     = if (isTRUE(input$chemo)) nz(input$treatment_intent) else NA,
         chemo_drugs      = if (length(input$chemo_drugs)) input$chemo_drugs else NA,
         chemo_cycles     = as_int(input$chemo_cycles),
         chemo_response   = nz(input$chemo_response),
@@ -1055,11 +1115,14 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
                          } else nz(input$death_cause),
         notes          = nz(input$notes),
 
-        # Treatment-line tracking (nullable; only meaningful when
-        # encounter_type == 'treatment').
-        line             = if (isTRUE(input$encounter_type == "treatment"))
+        # Treatment-line tracking. La caja "Linea e intencion" ahora se
+        # muestra para initial_dx, recurrence y treatment, asi que estos
+        # campos pueden estar presentes en cualquiera de esos tres tipos.
+        line             = if (isTRUE(input$encounter_type %in%
+                                      c("initial_dx","recurrence","treatment")))
                              as_int(input$line) else NA,
-        treatment_intent = if (isTRUE(input$encounter_type == "treatment"))
+        treatment_intent = if (isTRUE(input$encounter_type %in%
+                                      c("initial_dx","recurrence","treatment")))
                              nz(input$treatment_intent) else NA,
 
         # Recurrence-specific fields (nullable; only meaningful when
