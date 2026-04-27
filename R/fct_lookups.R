@@ -205,8 +205,10 @@ lookup_sites <- function() {
   base <- gsub("^[\"\ufeff]+|[\"\ufeff]+$", "", base)
   base <- base[nzchar(base)]
   translated <- vapply(base, function(x) {
-    es <- .SITE_ES[[x]]
-    if (!is.null(es) && nzchar(es)) return(es)
+    # NB: `[[` on a named character vector errors when the key is missing,
+    # so use single-bracket lookup which returns NA for unknown names.
+    es <- unname(.SITE_ES[x])
+    if (!is.na(es) && nzchar(es)) return(es)
     # fallback: Title Case the leftover English so it doesn't look raw
     paste0(substr(x,1,1), tolower(substr(x,2,nchar(x))))
   }, character(1), USE.NAMES = FALSE)
@@ -345,8 +347,9 @@ lookup_oncotree <- function() {
   if (is.null(x) || ncol(x) < 2) return(character(0))
   vals <- sort(unique(x[[2]][nzchar(x[[2]])]))
   labels <- vapply(vals, function(v) {
-    es <- .ONCOTREE_ES[[v]]
-    if (!is.null(es) && nzchar(es)) es else v
+    # `[[` errors on missing keys for named char vectors; use `[` + is.na.
+    es <- unname(.ONCOTREE_ES[v])
+    if (!is.na(es) && nzchar(es)) es else v
   }, character(1), USE.NAMES = FALSE)
   out <- vals
   names(out) <- labels
