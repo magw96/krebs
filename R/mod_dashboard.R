@@ -388,22 +388,29 @@ mod_dashboard_server <- function(id, pool, user) {
       })
     })
 
-    # ---- Mexico choropleth ------------------------------------------------
+    # ---- Cases by Mexican state (horizontal bar) --------------------------
+    # Replaces the old mxmaps choropleth, which required heavy geo deps that
+    # do not install reliably on Posit Connect Cloud. A sortable bar chart
+    # answers the same clinical question ("which estados refer the most
+    # patients?") without any map dependency.
     output$p_map <- plotly::renderPlotly({
       tryCatch({
-        if (!requireNamespace("mxmaps", quietly = TRUE))
-          return(plot_empty_ly("Mapa no disponible (mxmaps no instalado)"))
         u <- user(); if (is.null(u)) return(plot_empty_ly("Sin sesion"))
         df <- db_read(pool, u, "
           SELECT pi.estado_n AS state_name, COUNT(*) AS n
             FROM patient_identifiers pi
             JOIN encounters e USING (hospital_id, mrn)
            WHERE e.encounter_type = 'initial_dx'
+             AND pi.estado_n IS NOT NULL AND pi.estado_n <> ''
            GROUP BY pi.estado_n")
         if (is.null(df) || nrow(df) == 0) return(plot_empty_ly("Sin datos"))
-        d2 <- merge(mxmaps::df_mxstate_2020, df, by = "state_name", all.x = TRUE)
-        d2$value <- d2$n
-        p <- mxmaps::mxstate_choropleth(d2[, c("region","value")])
+        df <- df[order(df$n), ]                        # ascending so bars stack top-down
+        df$state_name <- factor(df$state_name, levels = df$state_name)
+        p <- ggplot2::ggplot(df, ggplot2::aes(x = state_name, y = n)) +
+          ggplot2::geom_col(fill = "#0d2c54") +
+          ggplot2::coord_flip() +
+          ggplot2::labs(x = NULL, y = "Casos (initial_dx)") +
+          ggplot2::theme_minimal()
         plotly::ggplotly(p)
       }, error = function(e) {
         message("[dashboard] p_map error: ", conditionMessage(e))

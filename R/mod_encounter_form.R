@@ -495,9 +495,10 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
                           "Mantenimiento"= "mantenimiento"),
               selected = character(0), inline = TRUE)),
           shiny::column(4,
-            shiny::div(class = "text-muted small mt-2",
-              shiny::icon("circle-info"), " ",
-              shiny::textOutput(ns("line_hint"), inline = TRUE)))
+            # Only render the hint+icon when there is actually a hint to show.
+            # Previously we had a bare circle-info icon stranded next to an
+            # empty textOutput on encounter types where line_hint = "".
+            shiny::uiOutput(ns("line_hint_box")))
         )
       )
     ),
@@ -1280,7 +1281,10 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
     # When the user switches to a treatment encounter, pre-fill the line
     # number with (max existing line for this patient) + 1 so they don't
     # have to remember whether this is 2L or 3L.
-    output$line_hint <- shiny::renderText({
+    # Hint text (still kept so other code can read it), and a wrapper UI that
+    # only renders when the text is non-empty -- avoids the orphan info icon
+    # showing next to nothing on initial_dx / recurrence rows.
+    line_hint_text <- shiny::reactive({
       if (!isTRUE(input$encounter_type == "treatment")) return("")
       p <- if (is.function(patient)) patient() else patient
       if (is.null(p) || is.null(p$mrn)) return("Linea 1L sugerida (paciente nuevo).")
@@ -1293,6 +1297,13 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
         error = function(e) 0L)
       sprintf("Sugerencia: %dL (basada en lineas previas registradas).",
               as.integer(max_line) + 1L)
+    })
+    output$line_hint <- shiny::renderText({ line_hint_text() })
+    output$line_hint_box <- shiny::renderUI({
+      txt <- line_hint_text()
+      if (!nzchar(txt)) return(NULL)
+      shiny::div(class = "text-muted small mt-2",
+                 shiny::icon("circle-info"), " ", txt)
     })
 
     shiny::observeEvent(list(input$encounter_type, patient()), {

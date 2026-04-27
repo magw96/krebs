@@ -27,7 +27,6 @@ Imports:
     htmltools,
     htmlwidgets,
     lubridate,
-    mxmaps,
     plotly,
     pool (>= 1.0.0),
     purrr,
@@ -48,6 +47,7 @@ Imports:
     uuid
 Suggests:
     aws.s3,
+    mxmaps,
     testthat (>= 3.0.0)
 Remotes:
     diegovalle/mxmaps
