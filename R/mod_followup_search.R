@@ -13,35 +13,31 @@ mod_followup_search_ui <- function(id) {
     shiny::p("Busque por MRN o nombre, revise el historial, y agregue un nuevo evento clinico.",
              class = "text-muted"),
 
-    # ---- Search bar (full width, compact) -------------------------------
+    # ---- Top row: Buscar (left) + Paciente (right) ----------------------
     shiny::fluidRow(
-      shiny::column(12,
+      shiny::column(6,
         bs4Dash::box(
           title = shiny::tagList(shiny::icon("magnifying-glass"), " Buscar paciente"),
           width = 12, status = "primary", solidHeader = TRUE, collapsible = TRUE,
-          shiny::fluidRow(
-            shiny::column(5,
-              shiny::textInput(ns("q"), NULL,
-                placeholder = "MRN o nombre (>= 2 caracteres)",
-                width = "100%")),
-            shiny::column(7,
-              shiny::div(style = "max-height:140px;overflow:auto;",
-                DT::DTOutput(ns("results_tbl"))))
-          )
+          shiny::textInput(ns("q"), NULL,
+            placeholder = "MRN o nombre (>= 2 caracteres)",
+            width = "100%"),
+          shiny::div(style = "max-height:200px;overflow:auto;",
+            DT::DTOutput(ns("results_tbl")))
         )
-      )
-    ),
-
-    # ---- Patient identity (left, narrow) + Historial (right, wide) ------
-    shiny::fluidRow(
-      shiny::column(4,
+      ),
+      shiny::column(6,
         bs4Dash::box(
           title = shiny::tagList(shiny::icon("user"), " Paciente"),
           width = 12, status = "primary", solidHeader = TRUE, collapsible = TRUE,
           shiny::uiOutput(ns("patient_card"))
         )
-      ),
-      shiny::column(8,
+      )
+    ),
+
+    # ---- Below: Historial (full width) + form ---------------------------
+    shiny::fluidRow(
+      shiny::column(12,
         bs4Dash::box(
           title = shiny::tagList(shiny::icon("timeline"), " Historial"),
           width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE,
