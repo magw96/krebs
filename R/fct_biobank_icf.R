@@ -132,8 +132,30 @@ biobank_icf_docx <- function(out_path, patient = NULL, bio_subject = NULL) {
            "asociados, con fines de investigaci\u00f3n biom\u00e9dica ",
            "oncol\u00f3gica. Lea cuidadosamente, pregunte cuanto necesite ",
            "y conserve una copia firmada."))
+  doc <- add_p(doc,
+    paste0("Este documento sigue la estructura recomendada por la IARC ",
+           "(Common Minimum Technical Standards and Protocols for Biobanks ",
+           "Dedicated to Cancer Research, 2017, Anexo 3) y se divide en dos ",
+           "partes: la PARTE A es un folleto informativo que explica el ",
+           "biobanco, los usos previstos, los riesgos y sus derechos; la ",
+           "PARTE B es el formulario de consentimiento donde usted decide ",
+           "qu\u00e9 autoriza y firma."))
 
   doc <- officer::body_add_break(doc)
+
+  # =========================================================================
+  # PARTE A - FOLLETO INFORMATIVO
+  # =========================================================================
+  doc <- officer::body_add_fpar(doc, officer::fpar(
+    officer::ftext("PARTE A \u2014 FOLLETO INFORMATIVO",
+                   officer::fp_text(font.family = "Calibri", font.size = 16,
+                                    bold = TRUE, color = teal)),
+    fp_p = par_center))
+  doc <- officer::body_add_fpar(doc, officer::fpar(
+    officer::ftext("Lea esta secci\u00f3n antes de firmar la Parte B",
+                   fmt_subtitle),
+    fp_p = par_center))
+  doc <- officer::body_add_par(doc, "", style = "Normal")
 
   # =========================================================================
   # 1. DATOS DEL PARTICIPANTE
@@ -368,6 +390,18 @@ biobank_icf_docx <- function(out_path, patient = NULL, bio_subject = NULL) {
            "ser\u00e1 comunicada al Comit\u00e9 de \u00c9tica. Usted puede ",
            "solicitar en cualquier momento la destrucci\u00f3n de las ",
            "muestras no utilizadas (secci\u00f3n 16. Derechos)."))
+  doc <- add_h2(doc, "11.1 Disposici\u00f3n de muestras en caso de fallecimiento")
+  doc <- add_p(doc,
+    paste0("Salvo que usted o su representante legal indiquen lo contrario, ",
+           "su consentimiento contin\u00faa vigente despu\u00e9s de su ",
+           "fallecimiento, conforme a la pr\u00e1ctica internacional de ",
+           "biobancos oncol\u00f3gicos. Sus muestras y datos seguir\u00e1n ",
+           "siendo utilizados \u00fanicamente con los alcances que usted ",
+           "haya autorizado en la secci\u00f3n 14, dado que el valor ",
+           "cient\u00edfico de los biobancos depende del seguimiento a ",
+           "largo plazo. Sus familiares directos pueden, en cualquier ",
+           "momento, solicitar al Custodio la destrucci\u00f3n de las ",
+           "muestras no utilizadas o el cese del re-contacto a familiares."))
 
   # =========================================================================
   # 12. CONFIDENCIALIDAD
@@ -478,13 +512,48 @@ biobank_icf_docx <- function(out_path, patient = NULL, bio_subject = NULL) {
   # =========================================================================
   # 15. COMPARTICION
   # =========================================================================
-  doc <- add_h1(doc, "15. Compartici\u00f3n de muestras y datos (FAIR + soberan\u00eda)")
+  doc <- add_h1(doc, "15. Compartici\u00f3n de muestras y datos")
+  doc <- add_h2(doc, "15.1 Principios FAIR y soberan\u00eda nacional")
   doc <- add_p(doc,
     paste0("El biobanco adopta los principios FAIR (Findable, Accessible, ",
            "Interoperable, Reusable) para maximizar el valor cient\u00edfico ",
-           "de los datos. Toda compartici\u00f3n internacional se realiza ",
-           "bajo MTA institucional que respeta los derechos de los donantes ",
-           "y la soberan\u00eda nacional."))
+           "de los datos. Toda compartici\u00f3n se rige por un Acuerdo de ",
+           "Transferencia de Material (MTA) institucional aprobado por el ",
+           "Comit\u00e9 Cient\u00edfico y por el Comit\u00e9 de \u00c9tica, que ",
+           "respeta los derechos de los donantes, la soberan\u00eda nacional ",
+           "sobre el material biol\u00f3gico humano y el reconocimiento ",
+           "institucional en publicaciones derivadas."))
+  doc <- add_h2(doc, "15.2 Transferencia internacional de muestras y datos")
+  doc <- add_p(doc,
+    paste0("La transferencia de muestras o datos pseudonimizados fuera del ",
+           "territorio nacional solo proceder\u00e1 si usted lo autoriza ",
+           "expl\u00edcitamente (opciones 14.6 y/o 14.7) y \u00fanicamente bajo ",
+           "MTA que garanticen los siguientes m\u00ednimos:"))
+  doc <- add_bullet(doc, "Prop\u00f3sito espec\u00edfico: ",
+    "el material recibido se usa exclusivamente para el proyecto descrito en el MTA, sin reutilizaci\u00f3n para otros fines sin nueva autorizaci\u00f3n.")
+  doc <- add_bullet(doc, "No re-transferencia: ",
+    "el receptor no puede transferir el material a terceros sin autorizaci\u00f3n previa por escrito del biobanco.")
+  doc <- add_bullet(doc, "Equivalencia regulatoria: ",
+    "el receptor debe operar bajo un marco de \u00e9tica e investigaci\u00f3n equivalente o m\u00e1s estricto que el mexicano (Helsinki, CIOMS, GDPR cuando aplique).")
+  doc <- add_bullet(doc, "Reconocimiento institucional: ",
+    "la instituci\u00f3n mexicana origen es co-autora, co-licenciante o reconocida formalmente en publicaciones, patentes y reportes.")
+  doc <- add_bullet(doc, "Retorno equitativo: ",
+    "los hallazgos derivados se comparten en formato accesible para investigadores nacionales y, cuando aplique, se ofrecen capacitaci\u00f3n y transferencia tecnol\u00f3gica.")
+  doc <- add_bullet(doc, "Destrucci\u00f3n al cierre: ",
+    "el material residual se destruye o se devuelve al biobanco al finalizar el proyecto.")
+  doc <- add_p(doc,
+    paste0("Las transferencias internacionales se notifican al CEI y se ",
+           "registran en el cat\u00e1logo p\u00fablico del biobanco (sin datos ",
+           "individuales)."))
+  doc <- add_h2(doc, "15.3 Repositorios de acceso controlado")
+  doc <- add_p(doc,
+    paste0("Si autoriza la opci\u00f3n 14.9, sus datos gen\u00f3micos ",
+           "pseudonimizados podr\u00e1n depositarse en repositorios cient\u00edficos ",
+           "de acceso controlado (por ejemplo, dbGaP de los NIH, EGA del EBI, ",
+           "BBMRI-ERIC, o repositorios mexicanos equivalentes). El acceso ",
+           "requiere aprobaci\u00f3n de un Comit\u00e9 de Acceso a Datos (DAC) ",
+           "y MTA por proyecto. Nunca se publican datos crudos en ",
+           "repositorios abiertos sin control de acceso."))
 
   # =========================================================================
   # 16. DERECHOS
@@ -540,9 +609,10 @@ biobank_icf_docx <- function(out_path, patient = NULL, bio_subject = NULL) {
            "comunitarios del biobanco."))
 
   # =========================================================================
-  # 19. CUSTODIO
+  # 19. GOBERNANZA, FINANCIAMIENTO Y CONTACTO
   # =========================================================================
-  doc <- add_h1(doc, "19. Custodio del biobanco y datos de contacto")
+  doc <- add_h1(doc, "19. Gobernanza, financiamiento y contacto")
+  doc <- add_h2(doc, "19.1 Custodio del biobanco")
   doc <- add_p(doc, "Custodio responsable: _________________________________________________")
   doc <- add_p(doc, "Cargo institucional:  _________________________________________________")
   doc <- add_p(doc, "Tel\u00e9fono de contacto: _________________   Correo: ____________________")
@@ -550,6 +620,35 @@ biobank_icf_docx <- function(out_path, patient = NULL, bio_subject = NULL) {
     paste0("Para ejercer sus derechos ARCO, retirar el consentimiento, ",
            "actualizar autorizaciones o resolver dudas, contacte al ",
            "Custodio."))
+  doc <- add_h2(doc, "19.2 Financiamiento del biobanco")
+  doc <- add_p(doc,
+    paste0("El Biobanco Oncol\u00f3gico Krebs se financia con fondos ",
+           "institucionales (presupuesto hospitalario y universitario) y, ",
+           "cuando aplique, con donaciones filantr\u00f3picas y subvenciones ",
+           "de investigaci\u00f3n nacionales (CONAHCYT, Secretar\u00eda de ",
+           "Salud) o internacionales (NIH, IARC, fundaciones acad\u00e9micas) ",
+           "obtenidas mediante concurso. Los proyectos que reciban muestras ",
+           "pueden cubrir costos de procesamiento y env\u00edo, pero el ",
+           "biobanco no opera con fines de lucro y los ingresos se ",
+           "reinvierten en infraestructura, control de calidad y ",
+           "trazabilidad. Los conflictos de inter\u00e9s se declaran al CEI."))
+  doc <- add_h2(doc, "19.3 Quejas, reclamos y comunicaci\u00f3n con el participante")
+  doc <- add_p(doc,
+    paste0("Si tiene una queja relacionada con el manejo de sus muestras o ",
+           "datos, puede dirigirla en el siguiente orden: ",
+           "(i) al Custodio del biobanco (secci\u00f3n 19.1) para resoluci\u00f3n ",
+           "directa; ",
+           "(ii) al Comit\u00e9 de \u00c9tica en Investigaci\u00f3n de la ",
+           "instituci\u00f3n (secci\u00f3n 20) si la respuesta del Custodio no ",
+           "es satisfactoria; ",
+           "(iii) a la Comisi\u00f3n Nacional de Bio\u00e9tica (CONBIOETICA) ",
+           "o a la COFEPRIS, en \u00faltima instancia, conforme al marco ",
+           "regulatorio vigente. ",
+           "Toda queja se documenta en bit\u00e1cora y se responde por ",
+           "escrito en un plazo m\u00e1ximo de quince (15) d\u00edas h\u00e1biles. ",
+           "Adicionalmente, el biobanco publica un informe anual en su ",
+           "p\u00e1gina institucional con resultados agregados, proyectos ",
+           "activos y composici\u00f3n del acervo."))
 
   # =========================================================================
   # 20. CEI
@@ -562,6 +661,22 @@ biobank_icf_docx <- function(out_path, patient = NULL, bio_subject = NULL) {
   doc <- add_p(doc, "Comit\u00e9 de \u00c9tica:      _________________________________________________")
   doc <- add_p(doc, "Registro CONBIOETICA: _____________   Registro COFEPRIS: _____________")
   doc <- add_p(doc, "Tel\u00e9fono / correo:    _________________________________________________")
+
+  doc <- officer::body_add_break(doc)
+
+  # =========================================================================
+  # PARTE B - FORMULARIO DE CONSENTIMIENTO
+  # =========================================================================
+  doc <- officer::body_add_fpar(doc, officer::fpar(
+    officer::ftext("PARTE B \u2014 FORMULARIO DE CONSENTIMIENTO",
+                   officer::fp_text(font.family = "Calibri", font.size = 16,
+                                    bold = TRUE, color = teal)),
+    fp_p = par_center))
+  doc <- officer::body_add_fpar(doc, officer::fpar(
+    officer::ftext("Firme \u00fanicamente despu\u00e9s de leer la Parte A y aclarar dudas",
+                   fmt_subtitle),
+    fp_p = par_center))
+  doc <- officer::body_add_par(doc, "", style = "Normal")
 
   # =========================================================================
   # 21. DECLARACION
@@ -594,10 +709,65 @@ biobank_icf_docx <- function(out_path, patient = NULL, bio_subject = NULL) {
   doc <- officer::body_add_table(doc, firmas, style = "Light Grid Accent 1",
                                  first_column = TRUE)
 
+  doc <- officer::body_add_break(doc)
+
+  # =========================================================================
+  # 23. GLOSARIO
+  # =========================================================================
+  doc <- add_h1(doc, "23. Glosario de t\u00e9rminos clave")
+  glos <- data.frame(
+    Termino = c(
+      "Biobanco",
+      "Muestra biol\u00f3gica",
+      "Pseudonimizaci\u00f3n",
+      "BIOID",
+      "HMAC-SHA256",
+      "NGS",
+      "ctDNA",
+      "FFPE",
+      "Organoides / PDX",
+      "MTA",
+      "FAIR",
+      "dbGaP / EGA",
+      "Hallazgo accionable",
+      "Asesor\u00eda gen\u00e9tica",
+      "ARCO",
+      "CEI / CONBIOETICA / COFEPRIS",
+      "Broad consent",
+      "Soberan\u00eda de datos"
+    ),
+    Definicion = c(
+      "Infraestructura institucional sin fines de lucro que recolecta, procesa, almacena y distribuye muestras biol\u00f3gicas humanas y datos asociados para investigaci\u00f3n.",
+      "Tejido, sangre, fluidos o derivados (ADN, ARN, prote\u00ednas) provenientes de un participante.",
+      "T\u00e9cnica que sustituye la identidad por un c\u00f3digo (BIOID); el v\u00ednculo se conserva cifrado y bajo control restringido.",
+      "Identificador pseudonimizado del biobanco con formato {INST}-{SUBJ}-{COL}-{TIPO}-{ALI} (ej. HSPA-7K3M9PQ2-001-FFPE-A01).",
+      "Funci\u00f3n criptogr\u00e1fica (Hash-based Message Authentication Code) que genera el BIOID de manera reproducible pero irreversible sin la sal institucional.",
+      "Next-Generation Sequencing: secuenciaci\u00f3n masiva paralela de ADN/ARN (paneles, exoma, genoma, transcriptoma).",
+      "ADN tumoral circulante en sangre; permite biopsia l\u00edquida no invasiva.",
+      "Formalin-Fixed Paraffin-Embedded: bloques de parafina del laboratorio de patolog\u00eda.",
+      "Modelos prec\u00ednicos derivados de paciente: organoides 3D in vitro y xenoinjertos en rat\u00f3n inmunodeficiente (PDX).",
+      "Material Transfer Agreement: contrato que rige la transferencia de muestras entre instituciones.",
+      "Findable, Accessible, Interoperable, Reusable: principios para datos cient\u00edficos abiertos pero gobernados.",
+      "Repositorios internacionales de datos gen\u00f3micos con acceso controlado por DAC (NIH y EBI respectivamente).",
+      "Resultado gen\u00e9tico cl\u00ednicamente significativo cuya devoluci\u00f3n cambia el manejo m\u00e9dico (por ej., variantes en BRCA1/2, Lynch).",
+      "Consulta especializada que explica las implicaciones m\u00e9dicas y familiares de un resultado gen\u00e9tico antes y despu\u00e9s de comunicarlo.",
+      "Acceso, Rectificaci\u00f3n, Cancelaci\u00f3n y Oposici\u00f3n: derechos sobre datos personales bajo la LFPDPPP.",
+      "Comit\u00e9 de \u00c9tica en Investigaci\u00f3n local; Comisi\u00f3n Nacional de Bio\u00e9tica; Comisi\u00f3n Federal para la Protecci\u00f3n contra Riesgos Sanitarios.",
+      "Consentimiento amplio: autorizaci\u00f3n para usos futuros de investigaci\u00f3n no especificados al momento de la donaci\u00f3n, sujetos a aprobaci\u00f3n del CEI.",
+      "Principio que afirma que las muestras y datos generados en M\u00e9xico son patrimonio nacional y su salida y uso se rigen por marcos institucionales y MTA."
+    ),
+    stringsAsFactors = FALSE
+  )
+  doc <- officer::body_add_table(doc, glos, style = "Light Grid Accent 1",
+                                 first_column = TRUE)
+
   doc <- officer::body_add_par(doc, "", style = "Normal")
   doc <- officer::body_add_fpar(doc, officer::fpar(
     officer::ftext(paste0("Documento generado por el sistema Krebs V0.2 el ",
-                          hoy, ". Imprima en hoja membretada institucional. ",
+                          hoy, ". Estructura basada en IARC Common Minimum ",
+                          "Technical Standards and Protocols for Biobanks ",
+                          "Dedicated to Cancer Research (2017), Anexo 3. ",
+                          "Imprima en hoja membretada institucional. ",
                           "Conserve la copia firmada en el expediente del ",
                           "biobanco y registre la versi\u00f3n y fecha en el ",
                           "m\u00f3dulo de Consentimientos del sistema."),
@@ -627,6 +797,9 @@ biobank_icf_docx <- function(out_path, patient = NULL, bio_subject = NULL) {
     sprintf("Protocolo IRB: TDM-CEI-2026-V1   Hospital: %s   Versi\u00f3n: ICF-Krebs-v1.0-2026   Fecha: %s",
             hosp, hoy),
     "Marco normativo: NOM-012-SSA3-2012 \u00b7 LGS T\u00edtulo Quinto \u00b7 LFPDPPP \u00b7 Helsinki 2013 \u00b7 CIOMS 2016 \u00b7 ISBER 2018",
+    "Estructura: IARC Common Minimum Technical Standards (2017), Anexo 3.",
+    "",
+    "================ PARTE A \u2014 FOLLETO INFORMATIVO ================",
     "",
     "1. Datos del participante",
     sprintf("   Nombre:       %s", pname),
@@ -652,6 +825,8 @@ biobank_icf_docx <- function(out_path, patient = NULL, bio_subject = NULL) {
     "10. Beneficios: indirectos, para futuros pacientes; equidad en MX.",
     "11. Almacenamiento: hasta 20 a\u00f1os renovables; -80\u00b0C / -196\u00b0C /",
     "    NOM-087-SEMARNAT-SSA1-2002 al destruir.",
+    "    11.1 Disposici\u00f3n post-mortem: el consentimiento contin\u00faa vigente",
+    "         tras el fallecimiento; familiares pueden solicitar destrucci\u00f3n.",
     "12. Confidencialidad LFPDPPP: pseudonimizaci\u00f3n + cifrado + roles +",
     "    auditor\u00eda; nunca publicar identificadores.",
     "13. Aspectos \u00e9ticos especiales:",
@@ -674,16 +849,30 @@ biobank_icf_docx <- function(out_path, patient = NULL, bio_subject = NULL) {
     "    [ ] 14.9  Dep\u00f3sito en repositorios de acceso controlado (dbGaP, EGA)",
     "    Renuncia a derechos comerciales: donaci\u00f3n altruista, sin regal\u00edas.",
     "",
-    "15. Compartici\u00f3n FAIR + soberan\u00eda nacional bajo MTA institucional.",
+    "15. Compartici\u00f3n de muestras y datos:",
+    "    15.1 FAIR + soberan\u00eda nacional bajo MTA institucional.",
+    "    15.2 Transferencia internacional: solo con autorizaci\u00f3n 14.6/14.7,",
+    "         prop\u00f3sito espec\u00edfico, sin re-transferencia, equivalencia",
+    "         regulatoria, reconocimiento institucional, retorno equitativo,",
+    "         destrucci\u00f3n al cierre del proyecto.",
+    "    15.3 Repositorios de acceso controlado (dbGaP/EGA/BBMRI) con DAC.",
     "16. Derechos ARCO + retiro: Acceso, Rectificaci\u00f3n, Cancelaci\u00f3n, Oposici\u00f3n.",
     "17. Compensaci\u00f3n econ\u00f3mica: ninguna; donaci\u00f3n altruista.",
     "18. Devoluci\u00f3n de resultados: solo accionables si autoriza opci\u00f3n 14.8.",
-    "19. Custodio del biobanco",
-    "    Nombre: _______________________  Cargo: _______________________",
-    "    Tel:    _______________________  Correo: ______________________",
+    "19. Gobernanza, financiamiento y contacto",
+    "    19.1 Custodio del biobanco",
+    "         Nombre: _______________________  Cargo: _______________________",
+    "         Tel:    _______________________  Correo: ______________________",
+    "    19.2 Financiamiento: institucional + subvenciones (CONAHCYT/SS/NIH/IARC),",
+    "         sin fines de lucro; ingresos reinvertidos en infraestructura.",
+    "    19.3 Quejas: Custodio \u2192 CEI \u2192 CONBIOETICA/COFEPRIS;",
+    "         respuesta por escrito en 15 d\u00edas h\u00e1biles.",
     "20. Comit\u00e9 de \u00c9tica en Investigaci\u00f3n",
     "    CEI: _________________________  CONBIOETICA: ___________________",
     "    Tel/Correo: _____________________________________________________",
+    "",
+    "================ PARTE B \u2014 FORMULARIO DE CONSENTIMIENTO ================",
+    "",
     "21. Declaraci\u00f3n del participante: he comprendido y acepto participar.",
     "",
     "22. Firmas",
@@ -693,6 +882,21 @@ biobank_icf_docx <- function(out_path, patient = NULL, bio_subject = NULL) {
     "    Testigo 2:              _______________________  Fecha: __________",
     "    Investigador:           _______________________  Fecha: __________",
     "    Custodio biobanco:      _______________________  Fecha: __________",
+    "",
+    "23. Glosario de t\u00e9rminos clave",
+    "    Biobanco: infraestructura institucional para acervo y distribuci\u00f3n.",
+    "    BIOID: ID pseudonimizado {INST}-{SUBJ}-{COL}-{TIPO}-{ALI}.",
+    "    HMAC-SHA256: hash criptogr\u00e1fico irreversible que genera el BIOID.",
+    "    NGS: secuenciaci\u00f3n masiva (paneles, exoma, genoma, transcriptoma).",
+    "    ctDNA: ADN tumoral circulante (biopsia l\u00edquida).",
+    "    FFPE: bloques de tejido fijado en formalina y embebido en parafina.",
+    "    Organoides / PDX: modelos prec\u00ednicos derivados de paciente.",
+    "    MTA: Material Transfer Agreement entre instituciones.",
+    "    FAIR: Findable, Accessible, Interoperable, Reusable.",
+    "    dbGaP / EGA: repositorios gen\u00f3micos con acceso controlado.",
+    "    Hallazgo accionable: variante con impacto en manejo cl\u00ednico.",
+    "    ARCO: Acceso, Rectificaci\u00f3n, Cancelaci\u00f3n y Oposici\u00f3n (LFPDPPP).",
+    "    Broad consent: consentimiento amplio a usos futuros aprobados por CEI.",
     "",
     paste0("Generado por Krebs V0.2 el ", hoy,
            " (fallback texto: 'officer' no instalado en el servidor).")
