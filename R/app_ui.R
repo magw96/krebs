@@ -82,6 +82,8 @@ app_ui <- function(request) {
             tabName = "tab_followup", icon = shiny::icon("clock-rotate-left")),
           bs4Dash::menuItem("Visualizacion",
             tabName = "tab_dashboard", icon = shiny::icon("chart-line")),
+          bs4Dash::menuItem("Biobanco",
+            tabName = "tab_biobank", icon = shiny::icon("vials")),
           bs4Dash::menuItem("Datos / Descargas",
             tabName = "tab_data", icon = shiny::icon("table")),
           bs4Dash::menuItem("Administracion",
@@ -95,6 +97,7 @@ app_ui <- function(request) {
           bs4Dash::tabItem(tabName = "tab_register",  mod_register_new_ui("register")),
           bs4Dash::tabItem(tabName = "tab_followup",  mod_followup_search_ui("followup")),
           bs4Dash::tabItem(tabName = "tab_dashboard", mod_dashboard_ui("dash")),
+          bs4Dash::tabItem(tabName = "tab_biobank",   mod_biobank_ui("biobank")),
           bs4Dash::tabItem(tabName = "tab_data",      mod_admin_data_ui("data")),
           bs4Dash::tabItem(tabName = "tab_admin",     mod_admin_users_ui("admin"))
         )

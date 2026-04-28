@@ -746,20 +746,6 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
                            placeholder = "Observaciones libres")
     ),
 
-    # ---- Banco de tejidos (opcional) ------------------------------------
-    # Muestras vinculadas al paciente (no al encuentro): el clinico abre el
-    # dialogo, registra tipo + aliquotas + consentimiento, y obtiene los
-    # BIOIDs. Cumple separacion clinica/banco via pseudonimizacion HMAC.
-    bs4Dash::box(
-      title = shiny::tagList(shiny::icon("vial"), " Banco de tejidos"),
-      width = 12, collapsible = TRUE, collapsed = TRUE,
-      status = "info", solidHeader = TRUE,
-      shiny::p(class = "text-muted small mb-2",
-        "Registre muestras biologicas (tejido, sangre, ADN/ARN) recolectadas ",
-        "en este encuentro. Se generan BIOIDs trazables y etiquetas imprimibles."),
-      mod_biobank_request_ui(ns("biobank"))
-    ),
-
     # ---- Attachments (PDF / PNG / JPG, up to 10 MB each) ----------------
     # Files are stored as bytea in encounter_attachments and inserted AFTER
     # the encounter row commits successfully (the parent module triggers the
@@ -793,13 +779,6 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
     # User helper -- coerce reactive / scalar / NULL to a list with $user_id.
     .u <- function() if (is.function(user)) user() else user
     .has_pool <- function() !is.null(pool) && inherits(pool, c("Pool","R6"))
-
-    # ---- Biobank submodule (button + dialog inside the form) -----------
-    # Returns a reactive with the BIOIDs created during this session, so the
-    # parent module can persist them on encounters.specimen_bioids if needed.
-    biobank_bioids <- mod_biobank_request_server(
-      "biobank", pool = pool, user = .u, patient = patient,
-      encounter_id = NULL)
 
     # Resolve recent-values lists once per session (cheap query). Wrapped in a
     # reactive so they refresh after submit if needed.

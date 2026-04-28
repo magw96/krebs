@@ -88,10 +88,32 @@ bioid_next_aliquot <- function(pool, bio_subject_id, sample_type, col_n) {
 
 # ---- Subject upsert ---------------------------------------------------------
 
+#' Resuelve el codigo corto (HSPA / ITESM) a partir del hospital_id
+#' (SMALLINT) almacenado en patients/users. Devuelve "INSTxx" si el
+#' hospital no tiene code asignado todavia.
+resolve_hospital_code <- function(pool, hospital_id) {
+  if (is.null(hospital_id) || is.na(hospital_id))
+    return("INST00")
+  hid <- suppressWarnings(as.integer(hospital_id))
+  if (is.na(hid)) return(toupper(as.character(hospital_id)))
+  res <- tryCatch(
+    DBI::dbGetQuery(pool,
+      "SELECT code FROM hospitals WHERE hospital_id = $1",
+      params = list(hid)),
+    error = function(e) NULL)
+  if (is.null(res) || nrow(res) == 0L || !nzchar(res$code[1]))
+    return(sprintf("INST%02d", hid))
+  toupper(res$code[1])
+}
+
 #' Crea (si no existe) el bio_subject_id para un MRN dado y guarda la
 #' asociacion cifrada en biobank_subject_link. Devuelve el bio_subject_id.
 biobank_subject_upsert <- function(pool, mrn, hospital_id, user_email) {
-  inst <- toupper(hospital_id)
+  inst <- if (is.numeric(hospital_id) ||
+              !is.na(suppressWarnings(as.integer(hospital_id))))
+            resolve_hospital_code(pool, hospital_id)
+          else
+            toupper(as.character(hospital_id))
   subj <- pseudonymize_mrn(mrn, inst)
   bio_subject_id <- paste0(inst, "-", subj)
 

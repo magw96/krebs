@@ -86,6 +86,8 @@ app_server <- function(input, output, session) {
                              data_changed = data_changed,
                              prefill      = pick_patient)
   mod_dashboard_server      ("dash",     pool = pool, user = current_user)
+  mod_biobank_server        ("biobank",  pool = pool, user = current_user,
+                             prefill    = pick_patient)
   mod_admin_data_server     ("data",     pool = pool, user = current_user,
                              data_changed = data_changed)
   mod_admin_users_server    ("admin",    pool = pool, user = current_user)
