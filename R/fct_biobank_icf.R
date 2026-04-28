@@ -122,7 +122,7 @@ biobank_icf_docx <- function(out_path, patient = NULL, bio_subject = NULL) {
               hoy,
               "NOM-012-SSA3-2012 \u00b7 LGS T\u00edtulo Quinto \u00b7 LFPDPPP \u00b7 Helsinki 2013 \u00b7 CIOMS 2016 \u00b7 ISBER 2018"),
     stringsAsFactors = FALSE)
-  doc <- officer::body_add_table(doc, meta, style = "Light Grid Accent 1",
+  doc <- officer::body_add_table(doc, meta, style = "table_template",
                                  first_column = TRUE)
   doc <- officer::body_add_par(doc, "", style = "Normal")
 
@@ -169,7 +169,7 @@ biobank_icf_docx <- function(out_path, patient = NULL, bio_subject = NULL) {
               "Fecha de la consulta"),
     Valor = c(pname, pmrn, psex, page, pdx, bsid, hosp, hoy),
     stringsAsFactors = FALSE)
-  doc <- officer::body_add_table(doc, ptbl, style = "Light Grid Accent 1",
+  doc <- officer::body_add_table(doc, ptbl, style = "table_template",
                                  first_column = TRUE)
 
   # =========================================================================
@@ -706,7 +706,7 @@ biobank_icf_docx <- function(out_path, patient = NULL, bio_subject = NULL) {
     Nombre = rep("_______________________________________", 6L),
     Firma  = rep("__________________  Fecha: ____________", 6L),
     stringsAsFactors = FALSE)
-  doc <- officer::body_add_table(doc, firmas, style = "Light Grid Accent 1",
+  doc <- officer::body_add_table(doc, firmas, style = "table_template",
                                  first_column = TRUE)
 
   doc <- officer::body_add_break(doc)
@@ -758,7 +758,7 @@ biobank_icf_docx <- function(out_path, patient = NULL, bio_subject = NULL) {
     ),
     stringsAsFactors = FALSE
   )
-  doc <- officer::body_add_table(doc, glos, style = "Light Grid Accent 1",
+  doc <- officer::body_add_table(doc, glos, style = "table_template",
                                  first_column = TRUE)
 
   doc <- officer::body_add_par(doc, "", style = "Normal")
