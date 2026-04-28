@@ -13,15 +13,31 @@ mod_followup_search_ui <- function(id) {
     shiny::p("Busque por MRN o nombre, revise el historial, y agregue un nuevo evento clinico.",
              class = "text-muted"),
 
+    # ---- Search bar (full width, compact) -------------------------------
+    shiny::fluidRow(
+      shiny::column(12,
+        bs4Dash::box(
+          title = shiny::tagList(shiny::icon("magnifying-glass"), " Buscar paciente"),
+          width = 12, status = "primary", solidHeader = TRUE, collapsible = TRUE,
+          shiny::fluidRow(
+            shiny::column(5,
+              shiny::textInput(ns("q"), NULL,
+                placeholder = "MRN o nombre (>= 2 caracteres)",
+                width = "100%")),
+            shiny::column(7,
+              shiny::div(style = "max-height:140px;overflow:auto;",
+                DT::DTOutput(ns("results_tbl"))))
+          )
+        )
+      )
+    ),
+
+    # ---- Patient identity (left, narrow) + Historial (right, wide) ------
     shiny::fluidRow(
       shiny::column(4,
         bs4Dash::box(
-          title = shiny::tagList(shiny::icon("magnifying-glass"), " Buscar paciente"),
-          width = 12, status = "primary", solidHeader = TRUE,
-          shiny::textInput(ns("q"), NULL,
-            placeholder = "MRN o nombre (>= 2 caracteres)"),
-          shiny::div(style = "max-height:240px;overflow:auto;",
-            DT::DTOutput(ns("results_tbl"))),
+          title = shiny::tagList(shiny::icon("user"), " Paciente"),
+          width = 12, status = "primary", solidHeader = TRUE, collapsible = TRUE,
           shiny::uiOutput(ns("patient_card"))
         )
       ),
@@ -137,8 +153,7 @@ mod_followup_search_server <- function(id, pool, user, data_changed = NULL,
     output$patient_card <- shiny::renderUI({
       p <- patient(); if (is.null(p)) return(shiny::p(shiny::em("Seleccione un paciente.")))
       shiny::tagList(
-        shiny::hr(),
-        shiny::h5(shiny::icon("user"), " ", shiny::strong(p$nombre),
+        shiny::h5(shiny::strong(p$nombre),
                   shiny::actionLink(ns("edit_identity"),
                     shiny::tagList(shiny::icon("pen-to-square"), " Editar"),
                     class = "btn btn-sm btn-outline-primary",

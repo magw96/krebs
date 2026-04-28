@@ -594,14 +594,17 @@ mod_encounter_form_ui <- function(id, allowed_types = c("initial_dx","recurrence
                       "<div style='text-align:left'>",
                       "<b>Clinica</b> Examen fisico / sintomas<br>",
                       "<b>Imagen</b> RECIST u otra evaluacion radiologica<br>",
-                      "<b>Patologica</b> Solo si hubo re-operacion (tejido reexaminado)",
+                      "<b>Patologica</b> Tejido reexaminado tras cirugia (",
+                      "p.ej. respuesta completa patologica post-neoadyuvancia ",
+                      "en mama / recto / esofago, o re-operacion por recurrencia)",
                       "</div>"),
                     style = "cursor:help; color:#0d2c54;",
                     shiny::icon("circle-info"))
                 ),
-                choices = c("(seleccione)" = "",
-                            "Clinica" = "clinica",
-                            "Imagen"  = "imagen"),
+                choices = c("(seleccione)"            = "",
+                            "Clinica"                 = "clinica",
+                            "Imagen"                  = "imagen",
+                            "Patologica (re-operado / post-neoadyuvancia)" = "patologica"),
                 selected = "")),
             shiny::column(5,
               shinyWidgets::pickerInput(ns("treatment_response"),
@@ -1008,23 +1011,11 @@ mod_encounter_form_server <- function(id, patient = function() NULL,
                  shiny::icon("circle-info"), " ", msg)
     })
 
-    # Add "Patologica (re-operado)" to the response-method picker only when
-    # at least one surgical procedure has been registered in this encounter
-    # (re-operation makes pathological response evaluable).
-    shiny::observe({
-      has_surgery <- (length(input$surgery_cpt) > 0 &&
-                      any(nzchar(input$surgery_cpt))) ||
-                      isTRUE(nzchar(input$surgery_other %||% ""))
-      base <- c("(seleccione)" = "",
-                "Clinica" = "clinica",
-                "Imagen"  = "imagen")
-      if (isTRUE(has_surgery))
-        base <- c(base, "Patologica (re-operado)" = "patologica")
-      shinyWidgets::updatePickerInput(session, "treatment_response_method",
-                                      choices  = base,
-                                      selected = input$treatment_response_method
-                                                 %||% "")
-    })
+    # Note: "Patologica" is always offered as an evaluation method (the UI
+    # tooltip explains the use cases: post-neoadyuvancia in breast/rectal/
+    # esophageal cancers, or re-operation in recurrent disease). We do not
+    # gate it on input$surgery_cpt because the resected tissue evaluation
+    # may have been registered in a *prior* encounter for the same patient.
 
     # ---- Auto-prefill downstream dates from encounter_date ---------------
     # Mirror encounter_date into surgery_date / discharge_date / death_date so
