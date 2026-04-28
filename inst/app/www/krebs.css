@@ -536,6 +536,56 @@ body:has(.krebs-login-card) .modal-dialog { margin-top: 12vh; }
   color: #fff !important;
 }
 
+/* ---- Krebs button family: white surfaces with brand-colored text ---
+   Used in modules where buttons sit on white card interiors and need
+   to read as clean / premium (e.g., Biobanco). White background, thin
+   colored border, brand-colored label. Hover inverts to filled. */
+.btn-krebs {
+  background-color: #fff !important;
+  border: 1px solid #d8dde5 !important;
+  color: var(--krebs-primary) !important;
+  font-weight: 500 !important;
+  box-shadow: 0 1px 0 rgba(13,44,84,.04);
+  transition: background-color .12s ease, color .12s ease,
+              border-color .12s ease, box-shadow .12s ease;
+}
+.btn-krebs:hover, .btn-krebs:focus {
+  box-shadow: 0 2px 6px rgba(13,44,84,.10);
+}
+.btn-krebs.btn-krebs-primary {
+  color: var(--krebs-primary) !important;
+  border-color: var(--krebs-primary) !important;
+}
+.btn-krebs.btn-krebs-primary:hover,
+.btn-krebs.btn-krebs-primary:focus {
+  background-color: var(--krebs-primary) !important;
+  color: #fff !important;
+  border-color: var(--krebs-primary) !important;
+}
+.btn-krebs.btn-krebs-success {
+  color: var(--krebs-success) !important;
+  border-color: var(--krebs-success) !important;
+}
+.btn-krebs.btn-krebs-success:hover,
+.btn-krebs.btn-krebs-success:focus {
+  background-color: var(--krebs-success) !important;
+  color: #fff !important;
+  border-color: var(--krebs-success) !important;
+}
+.btn-krebs.btn-krebs-info {
+  color: var(--krebs-info) !important;
+  border-color: var(--krebs-info) !important;
+}
+.btn-krebs.btn-krebs-info:hover,
+.btn-krebs.btn-krebs-info:focus {
+  background-color: var(--krebs-info) !important;
+  color: #fff !important;
+  border-color: var(--krebs-info) !important;
+}
+.btn-krebs .fa, .btn-krebs .fas, .btn-krebs .fa-solid {
+  margin-right: .25rem;
+}
+
 /* ---- tabBox: keep active-tab text white on navy --------------------
    bs4Dash::tabBox renders nav-link.active without an explicit color,
    so the parent header turns navy but the tab labels stay near-black,

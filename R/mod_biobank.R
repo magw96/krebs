@@ -82,7 +82,7 @@ mod_biobank_ui <- function(id) {
                 shiny::actionButton(ns("c_save"),
                   shiny::tagList(shiny::icon("save"),
                                  " Registrar consentimiento"),
-                  class = "btn-success")
+                  class = "btn-krebs btn-krebs-success")
               )
             ),
             shiny::hr(),
@@ -166,7 +166,7 @@ mod_biobank_ui <- function(id) {
             shiny::actionButton(ns("r_save"),
               shiny::tagList(shiny::icon("paper-plane"),
                              " Registrar y generar etiquetas"),
-              class = "btn-success btn-lg"),
+              class = "btn-krebs btn-krebs-success btn-lg"),
             shiny::div(style = "color:#c00", shiny::textOutput(ns("r_err"))),
             shiny::uiOutput(ns("r_label_dl"))
           ),
@@ -410,7 +410,7 @@ mod_biobank_server <- function(id, pool, user, prefill = NULL) {
       shiny::downloadButton(ns("icf_dl"),
         " Descargar machote ICF (DOCX)",
         icon = shiny::icon("file-word"),
-        class = "btn-primary")
+        class = "btn-krebs btn-krebs-primary")
     })
 
     output$icf_dl <- shiny::downloadHandler(
@@ -527,7 +527,7 @@ mod_biobank_server <- function(id, pool, user, prefill = NULL) {
         shiny::downloadButton(ns("label_pdf_dl"),
           sprintf(" Descargar etiqueta (%s)", l$first),
           icon = shiny::icon("print"),
-          class = "btn-success")
+          class = "btn-krebs btn-krebs-success")
       )
     })
 
