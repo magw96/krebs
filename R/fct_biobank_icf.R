@@ -2,11 +2,14 @@
 #' pre-llenado con los datos del paciente para imprimir y firmar en consulta.
 #'
 #' Cumple con los requisitos minimos de la NOM-012-SSA3-2012, la Ley General
-#' de Salud (titulo quinto, investigacion en seres humanos), la LFPDPPP y los
-#' lineamientos internacionales de OMS / Declaracion de Helsinki / CIOMS para
-#' biobancos oncologicos.
+#' de Salud (titulo quinto, investigacion en seres humanos), el Reglamento
+#' de la LGS en materia de investigacion para la salud, la LFPDPPP, asi como
+#' los lineamientos internacionales de la Declaracion de Helsinki (AMM 2013),
+#' las guias CIOMS 2016 y la ISBER Best Practices 2018 para biobancos.
 #'
-#' El documento es para impresion en hoja membretada institucional.
+#' Genera un .docx con formato (titulo, encabezados color navy, parrafos
+#' justificados, tablas, saltos de pagina, encabezado y pie con numero de
+#' pagina). Si officer no esta disponible, cae a un .txt equivalente.
 #'
 #' @param out_path     Ruta destino del archivo .docx
 #' @param patient      Lista con $mrn, $nombre, $sexo, $edad, $tipo_cancer
@@ -14,10 +17,10 @@
 #' @return out_path
 
 biobank_icf_docx <- function(out_path, patient = NULL, bio_subject = NULL) {
+
   # Fallback robusto: si officer no esta disponible (ej. PCC sin la
   # dependencia instalada todavia), generamos un .txt con el mismo
-  # contenido en lugar de fallar el download y dejar al navegador
-  # con "Site wasn't available".
+  # contenido en lugar de fallar el download.
   if (!requireNamespace("officer", quietly = TRUE)) {
     txt_path <- sub("\\.docx?$", ".txt", out_path)
     if (txt_path == out_path) txt_path <- paste0(out_path, ".txt")
@@ -26,405 +29,580 @@ biobank_icf_docx <- function(out_path, patient = NULL, bio_subject = NULL) {
     return(invisible(out_path))
   }
 
+  # ---- Datos pre-llenados --------------------------------------------------
   pname  <- patient$nombre %||% "_______________________________"
   pmrn   <- patient$mrn    %||% "_______________"
   psex   <- patient$sexo   %||% "____"
   page   <- if (!is.null(patient$edad) && !is.na(patient$edad))
-              sprintf("%d anos", as.integer(patient$edad))
-            else "____ anos"
+              sprintf("%d a\u00f1os", as.integer(patient$edad))
+            else "____ a\u00f1os"
   pdx    <- patient$tipo_cancer %||% "_______________________________"
-  bsid   <- bio_subject$bio_subject_id %||% "(se asignara al firmar)"
+  bsid   <- bio_subject$bio_subject_id %||% "(se asignar\u00e1 al firmar)"
   hosp   <- bio_subject$hospital_code  %||% "____"
   hoy    <- format(Sys.Date(), "%Y-%m-%d")
 
+  # ---- Paleta y estilos tipograficos --------------------------------------
+  navy <- "#0d2c54"; navy2 <- "#14365e"; teal <- "#2e7d6b"
+
+  fmt_title <- officer::fp_text(font.family = "Calibri", font.size = 18,
+                                bold = TRUE, color = navy)
+  fmt_subtitle <- officer::fp_text(font.family = "Calibri", font.size = 11,
+                                   italic = TRUE, color = navy2)
+  fmt_h1 <- officer::fp_text(font.family = "Calibri", font.size = 14,
+                             bold = TRUE, color = navy)
+  fmt_h2 <- officer::fp_text(font.family = "Calibri", font.size = 12,
+                             bold = TRUE, color = navy2)
+  fmt_body <- officer::fp_text(font.family = "Calibri", font.size = 11,
+                               color = "#1c1c1c")
+  fmt_bold <- officer::fp_text(font.family = "Calibri", font.size = 11,
+                               bold = TRUE, color = "#1c1c1c")
+  fmt_small <- officer::fp_text(font.family = "Calibri", font.size = 9,
+                                italic = TRUE, color = "#5a5a5a")
+  fmt_chip <- officer::fp_text(font.family = "Consolas", font.size = 10,
+                               bold = TRUE, color = teal)
+
+  par_just <- officer::fp_par(text.align = "justify", padding.bottom = 4,
+                              padding.top = 2, line_spacing = 1.15)
+  par_left <- officer::fp_par(text.align = "left", padding.bottom = 2,
+                              line_spacing = 1.15)
+  par_indent <- officer::fp_par(text.align = "justify", padding.bottom = 2,
+                                padding.left = 24, line_spacing = 1.15)
+  par_h1 <- officer::fp_par(text.align = "left", padding.top = 12,
+                            padding.bottom = 6,
+                            border.bottom = officer::fp_border(color = navy,
+                                                               width = 1))
+  par_h2 <- officer::fp_par(text.align = "left", padding.top = 8,
+                            padding.bottom = 4)
+  par_center <- officer::fp_par(text.align = "center", padding.bottom = 6)
+
+  # Helpers para no repetir
+  add_h1 <- function(d, txt) {
+    officer::body_add_fpar(d, officer::fpar(officer::ftext(txt, fmt_h1),
+                                            fp_p = par_h1))
+  }
+  add_h2 <- function(d, txt) {
+    officer::body_add_fpar(d, officer::fpar(officer::ftext(txt, fmt_h2),
+                                            fp_p = par_h2))
+  }
+  add_p <- function(d, txt, indent = FALSE) {
+    p <- if (indent) par_indent else par_just
+    officer::body_add_fpar(d, officer::fpar(officer::ftext(txt, fmt_body),
+                                            fp_p = p))
+  }
+  add_bullet <- function(d, label, body) {
+    # "label" en negrita, luego el texto
+    officer::body_add_fpar(d, officer::fpar(
+      officer::ftext(label, fmt_bold),
+      officer::ftext(body,  fmt_body),
+      fp_p = par_indent))
+  }
+
   doc <- officer::read_docx()
 
-  # ============================================================
-  # ENCABEZADO
-  # ============================================================
-  doc <- officer::body_add_par(doc,
-    "CONSENTIMIENTO INFORMADO PARA DONACION DE MUESTRAS BIOLOGICAS AL BIOBANCO ONCOLOGICO KREBS",
-    style = "heading 1")
-
-  doc <- officer::body_add_par(doc,
-    sprintf("Protocolo IRB: TDM-CEI-2026-V1   |   Hospital: %s   |   Version del documento: ICF-Krebs-v1.0-2026   |   Fecha: %s",
-            hosp, hoy),
-    style = "Normal")
-
-  doc <- officer::body_add_par(doc,
-    paste0("Documento de consentimiento informado para la donacion ",
-           "voluntaria de muestras biologicas y datos clinicos asociados ",
-           "con fines de investigacion biomedica oncologica."),
-    style = "Normal")
-
-  # ============================================================
-  # 1. DATOS DEL PARTICIPANTE
-  # ============================================================
+  # =========================================================================
+  # PORTADA
+  # =========================================================================
+  doc <- officer::body_add_fpar(doc, officer::fpar(
+    officer::ftext("CONSENTIMIENTO INFORMADO", fmt_title),
+    fp_p = par_center))
+  doc <- officer::body_add_fpar(doc, officer::fpar(
+    officer::ftext("Donaci\u00f3n de muestras biol\u00f3gicas y datos cl\u00ednicos al Biobanco Oncol\u00f3gico Krebs",
+                   fmt_subtitle),
+    fp_p = par_center))
   doc <- officer::body_add_par(doc, "", style = "Normal")
-  doc <- officer::body_add_par(doc, "1. Datos del participante",
-                               style = "heading 2")
+
+  # Tabla de metadatos
+  meta <- data.frame(
+    Campo = c("Protocolo IRB", "Versi\u00f3n del documento",
+              "Hospital", "Fecha de impresi\u00f3n",
+              "Marco normativo"),
+    Valor = c("TDM-CEI-2026-V1",
+              "ICF-Krebs-v1.0-2026",
+              hosp,
+              hoy,
+              "NOM-012-SSA3-2012 \u00b7 LGS T\u00edtulo Quinto \u00b7 LFPDPPP \u00b7 Helsinki 2013 \u00b7 CIOMS 2016 \u00b7 ISBER 2018"),
+    stringsAsFactors = FALSE)
+  doc <- officer::body_add_table(doc, meta, style = "Light Grid Accent 1",
+                                 first_column = TRUE)
+  doc <- officer::body_add_par(doc, "", style = "Normal")
+
+  doc <- add_p(doc,
+    paste0("Documento de consentimiento informado para la donaci\u00f3n ",
+           "voluntaria de muestras biol\u00f3gicas y datos cl\u00ednicos ",
+           "asociados, con fines de investigaci\u00f3n biom\u00e9dica ",
+           "oncol\u00f3gica. Lea cuidadosamente, pregunte cuanto necesite ",
+           "y conserve una copia firmada."))
+
+  doc <- officer::body_add_break(doc)
+
+  # =========================================================================
+  # 1. DATOS DEL PARTICIPANTE
+  # =========================================================================
+  doc <- add_h1(doc, "1. Datos del participante")
 
   ptbl <- data.frame(
     Campo = c("Nombre completo", "MRN (registro hospitalario)",
-              "Sexo", "Edad", "Diagnostico oncologico",
-              "ID pseudonimizado (BIOID)", "Hospital de atencion",
+              "Sexo", "Edad", "Diagn\u00f3stico oncol\u00f3gico",
+              "ID pseudonimizado (BIOID)", "Hospital de atenci\u00f3n",
               "Fecha de la consulta"),
     Valor = c(pname, pmrn, psex, page, pdx, bsid, hosp, hoy),
-    stringsAsFactors = FALSE
-  )
-  doc <- officer::body_add_table(doc, ptbl, style = "table_template")
+    stringsAsFactors = FALSE)
+  doc <- officer::body_add_table(doc, ptbl, style = "Light Grid Accent 1",
+                                 first_column = TRUE)
 
-  # ============================================================
-  # 2. INVITACION
-  # ============================================================
-  doc <- officer::body_add_par(doc, "", style = "Normal")
-  doc <- officer::body_add_par(doc, "2. Invitacion a participar",
-                               style = "heading 2")
-  doc <- officer::body_add_par(doc,
-    paste0("Se le invita a participar de manera voluntaria como donante de ",
-           "muestras biologicas y datos clinicos al Biobanco Oncologico Krebs, ",
-           "una infraestructura institucional de investigacion que conserva, ",
-           "administra y distribuye material biologico humano de pacientes ",
-           "con cancer para apoyar proyectos de investigacion biomedica ",
-           "aprobados por el Comite de Etica en Investigacion (CEI) y por ",
-           "el Comite de Investigacion correspondiente. ",
-           "Antes de aceptar, lea cuidadosamente este documento, pregunte ",
-           "todo lo que considere necesario y tomese el tiempo que requiera ",
-           "para decidir."),
-    style = "Normal")
+  # =========================================================================
+  # 2. MARCO ETICO Y NORMATIVO
+  # =========================================================================
+  doc <- add_h1(doc, "2. Marco \u00e9tico y normativo")
+  doc <- add_p(doc,
+    paste0("El Biobanco Oncol\u00f3gico Krebs opera bajo los principios ",
+           "bio\u00e9ticos cl\u00e1sicos:"))
+  doc <- add_bullet(doc, "Autonom\u00eda: ",
+    "su participaci\u00f3n es libre, informada y revocable en cualquier momento.")
+  doc <- add_bullet(doc, "Beneficencia: ",
+    "el biobanco busca generar conocimiento que beneficie a futuros pacientes con c\u00e1ncer.")
+  doc <- add_bullet(doc, "No maleficencia: ",
+    "minimiza riesgos f\u00edsicos, psicol\u00f3gicos y sociales mediante pseudonimizaci\u00f3n criptogr\u00e1fica y control de acceso.")
+  doc <- add_bullet(doc, "Justicia: ",
+    "garantiza acceso equitativo de la comunidad cient\u00edfica y evita la explotaci\u00f3n de poblaciones vulnerables.")
+  doc <- add_p(doc,
+    paste0("Adicionalmente cumple con la Declaraci\u00f3n de Helsinki ",
+           "(Asociaci\u00f3n M\u00e9dica Mundial, revisi\u00f3n 2013), las ",
+           "Pautas \u00c9ticas Internacionales para la Investigaci\u00f3n ",
+           "Biom\u00e9dica en Seres Humanos del Consejo de Organizaciones ",
+           "Internacionales de las Ciencias M\u00e9dicas (CIOMS, 2016), las ",
+           "ISBER Best Practices for Repositories (2018) y la normativa ",
+           "mexicana aplicable: Ley General de Salud (T\u00edtulo Quinto), ",
+           "su Reglamento en materia de investigaci\u00f3n, NOM-012-SSA3-2012, ",
+           "NOM-035-SSA3-2012, LFPDPPP y, cuando aplique, NOM-220-SSA1-2016."))
 
-  # ============================================================
-  # 3. PROPOSITO Y FINES DE LA INVESTIGACION
-  # ============================================================
-  doc <- officer::body_add_par(doc, "3. Proposito y fines de la investigacion",
-                               style = "heading 2")
-  doc <- officer::body_add_par(doc,
-    paste0("El proposito del Biobanco Oncologico Krebs es generar un acervo ",
-           "de muestras biologicas y datos clinicos de alta calidad que ",
-           "permita responder preguntas cientificas dirigidas a:"),
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    "a) Comprender los mecanismos biologicos, geneticos y moleculares del cancer.",
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    "b) Identificar biomarcadores diagnosticos, pronosticos y predictivos de respuesta al tratamiento.",
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    "c) Desarrollar y validar nuevas pruebas diagnosticas y terapias dirigidas (medicina de precision).",
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    "d) Estudiar la epidemiologia molecular y los factores de riesgo del cancer en la poblacion mexicana.",
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    "e) Apoyar proyectos academicos, de tesis, de posgrado y publicaciones cientificas revisadas por pares.",
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    "f) Habilitar colaboraciones nacionales e internacionales bajo Acuerdos de Transferencia de Material (MTA).",
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    paste0("Cada uso especifico de sus muestras requerira la aprobacion ",
-           "previa del Comite de Etica en Investigacion y del Comite ",
-           "Cientifico del biobanco. Ningun proyecto podra utilizar sus ",
-           "muestras fuera del alcance que usted autorice en este documento."),
-    style = "Normal")
+  # =========================================================================
+  # 3. INVITACION A PARTICIPAR
+  # =========================================================================
+  doc <- add_h1(doc, "3. Invitaci\u00f3n a participar")
+  doc <- add_p(doc,
+    paste0("Se le invita a participar voluntariamente como donante de ",
+           "muestras biol\u00f3gicas y datos cl\u00ednicos al Biobanco ",
+           "Oncol\u00f3gico Krebs. Un biobanco es una infraestructura ",
+           "institucional sin fines de lucro que conserva, administra y ",
+           "distribuye material biol\u00f3gico humano y datos asociados ",
+           "para apoyar proyectos de investigaci\u00f3n biom\u00e9dica ",
+           "previamente aprobados por un Comit\u00e9 de \u00c9tica en ",
+           "Investigaci\u00f3n (CEI) y un Comit\u00e9 Cient\u00edfico."))
+  doc <- add_p(doc,
+    paste0("La donaci\u00f3n es independiente del tratamiento que reciba: ",
+           "no condiciona ning\u00fan procedimiento ni decisi\u00f3n ",
+           "cl\u00ednica. Su m\u00e9dico tratante puede o no ser uno de ",
+           "los investigadores que utilicen las muestras."))
 
-  # ============================================================
+  # =========================================================================
   # 4. NATURALEZA VOLUNTARIA
-  # ============================================================
-  doc <- officer::body_add_par(doc, "4. Naturaleza voluntaria de la participacion",
-                               style = "heading 2")
-  doc <- officer::body_add_par(doc,
-    paste0("Su participacion es totalmente voluntaria. Si decide no donar, ",
-           "su atencion medica, derechos asistenciales y relacion con su ",
-           "medico tratante no se veran afectados de ninguna forma. Tampoco ",
-           "afectara la cobertura de su seguro ni el acceso a servicios ",
-           "hospitalarios."),
-    style = "Normal")
+  # =========================================================================
+  doc <- add_h1(doc, "4. Naturaleza voluntaria de la participaci\u00f3n")
+  doc <- add_p(doc,
+    paste0("Su participaci\u00f3n es totalmente voluntaria. Si decide no ",
+           "donar, su atenci\u00f3n m\u00e9dica, derechos asistenciales y ",
+           "relaci\u00f3n con su m\u00e9dico tratante no se ver\u00e1n ",
+           "afectados de ninguna forma. Tampoco afectar\u00e1 la cobertura ",
+           "de su seguro ni el acceso a servicios hospitalarios. Puede ",
+           "cambiar de opini\u00f3n y retirar el consentimiento en ",
+           "cualquier momento sin necesidad de justificaci\u00f3n."))
 
-  # ============================================================
-  # 5. PROCEDIMIENTO Y TIPOS DE MUESTRA
-  # ============================================================
-  doc <- officer::body_add_par(doc, "5. Procedimiento y tipos de muestra",
-                               style = "heading 2")
-  doc <- officer::body_add_par(doc,
-    paste0("Las muestras se obtendran exclusivamente durante procedimientos ",
-           "clinicos ya programados (cirugia oncologica, biopsia diagnostica, ",
-           "extraccion de sangre indicada por su medico). No se realizaran ",
-           "intervenciones adicionales ni se aumentara el riesgo de su ",
-           "tratamiento medico. Las muestras que se podran almacenar incluyen:"),
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    "- Tejido tumoral fresco, congelado o en bloque de parafina (FFPE).",
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    "- Tejido normal pareado adyacente al tumor.",
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    "- Sangre periferica completa, plasma y suero.",
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    "- Acidos nucleicos extraidos (ADN genomico, ARN, ADN tumoral circulante).",
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    "- Cuando aplique, otros fluidos (orina, liquido pleural, ascitis, LCR) obtenidos por indicacion clinica.",
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    paste0("Las muestras se acompanaran de datos clinicos relevantes ",
-           "(diagnostico, estadificacion, tratamiento, evolucion, ",
-           "histopatologia, estudios de imagen y laboratorio), siempre ",
-           "vinculados unicamente al BIOID y nunca a su nombre."),
-    style = "Normal")
+  doc <- officer::body_add_break(doc)
 
-  # ============================================================
-  # 6. RIESGOS Y BENEFICIOS
-  # ============================================================
-  doc <- officer::body_add_par(doc, "6. Riesgos y beneficios",
-                               style = "heading 2")
-  doc <- officer::body_add_par(doc,
-    paste0("Riesgos: la donacion no agrega riesgos fisicos a los ya ",
-           "asociados al procedimiento clinico que de cualquier manera ",
-           "se realizaria. El principal riesgo es la potencial perdida ",
-           "de confidencialidad, que el biobanco mitiga mediante ",
-           "pseudonimizacion criptografica (BIOID), almacenamiento ",
-           "cifrado del mapeo identidad-muestra, control de acceso por ",
-           "roles y registro auditable de cada acceso."),
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    paste0("Beneficios: la donacion no representa un beneficio directo ",
-           "inmediato para usted. La investigacion derivada puede ",
-           "beneficiar a futuros pacientes con cancer al mejorar el ",
-           "diagnostico, el pronostico y los tratamientos disponibles."),
-    style = "Normal")
+  # =========================================================================
+  # 5. PROPOSITO DEL BIOBANCO
+  # =========================================================================
+  doc <- add_h1(doc, "5. Prop\u00f3sito del Biobanco Oncol\u00f3gico Krebs")
+  doc <- add_p(doc,
+    paste0("El Biobanco Oncol\u00f3gico Krebs tiene como prop\u00f3sito ",
+           "general construir un acervo institucional de muestras biol\u00f3gicas ",
+           "humanas y datos cl\u00ednicos vinculados, de alta calidad ",
+           "anal\u00edtica y con trazabilidad completa, que permita acelerar ",
+           "la investigaci\u00f3n traslacional sobre el c\u00e1ncer en ",
+           "M\u00e9xico y reducir la dependencia de cohortes biol\u00f3gicas ",
+           "extranjeras que no representan la diversidad gen\u00e9tica de ",
+           "nuestra poblaci\u00f3n."))
+  doc <- add_p(doc,
+    paste0("El acervo se administra con criterios cient\u00edficos, ",
+           "\u00e9ticos y de equidad, asegurando que cada proyecto que ",
+           "acceda a las muestras justifique su pertinencia, presente ",
+           "metodolog\u00eda v\u00e1lida y demuestre que no existen ",
+           "alternativas menos invasivas para responder a la pregunta ",
+           "de investigaci\u00f3n."))
 
-  # ============================================================
-  # 7. TIEMPO DE ALMACENAMIENTO
-  # ============================================================
-  doc <- officer::body_add_par(doc, "7. Tiempo de almacenamiento",
-                               style = "heading 2")
-  doc <- officer::body_add_par(doc,
-    paste0("Las muestras y los datos asociados se almacenaran en el ",
-           "Biobanco Oncologico Krebs por un periodo inicial de hasta ",
-           "veinte (20) anos contados a partir de la fecha de firma de ",
-           "este consentimiento, plazo que podra renovarse por periodos ",
-           "iguales si el biobanco se mantiene activo y los proyectos de ",
-           "investigacion asi lo requieran. Antes de cada renovacion el ",
-           "Comite de Etica revisara la pertinencia cientifica del acervo. ",
-           "Si el biobanco cesara operaciones, sus muestras seran ",
-           "destruidas siguiendo los procedimientos institucionales para ",
-           "residuos peligrosos biologico-infecciosos (NOM-087-SEMARNAT-SSA1-2002), ",
-           "o transferidas a otro biobanco autorizado, decision que sera ",
-           "comunicada al Comite de Etica."),
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    paste0("Usted puede solicitar en cualquier momento la destruccion de ",
-           "las muestras no utilizadas (ver seccion 10. Derechos)."),
-    style = "Normal")
+  # =========================================================================
+  # 6. OBJETIVOS CIENTIFICOS
+  # =========================================================================
+  doc <- add_h1(doc, "6. Objetivos cient\u00edficos espec\u00edficos")
+  doc <- add_p(doc,
+    "El biobanco apoyar\u00e1 proyectos dirigidos, entre otros, a:")
+  doc <- add_bullet(doc, "a) Bases moleculares del c\u00e1ncer: ",
+    "estudiar mutaciones som\u00e1ticas y germinales, alteraciones epigen\u00e9ticas, expresi\u00f3n g\u00e9nica y v\u00edas de se\u00f1alizaci\u00f3n implicadas en la oncog\u00e9nesis y la progresi\u00f3n tumoral.")
+  doc <- add_bullet(doc, "b) Biomarcadores: ",
+    "identificar y validar marcadores diagn\u00f3sticos, pron\u00f3sticos y predictivos de respuesta al tratamiento en sangre y en tejido tumoral.")
+  doc <- add_bullet(doc, "c) Medicina de precisi\u00f3n: ",
+    "desarrollar y validar pruebas diagn\u00f3sticas y terapias dirigidas, incluyendo paneles de NGS, perfiles transcript\u00f3micos y modelos preditivos basados en inteligencia artificial.")
+  doc <- add_bullet(doc, "d) Epidemiolog\u00eda molecular: ",
+    "describir la frecuencia y distribuci\u00f3n de variantes oncog\u00e9nicas en la poblaci\u00f3n mexicana y compararla con cohortes internacionales.")
+  doc <- add_bullet(doc, "e) Microambiente tumoral e inmunolog\u00eda: ",
+    "caracterizar la respuesta inmune, el microbioma y las interacciones c\u00e9lula-estroma asociadas al c\u00e1ncer.")
+  doc <- add_bullet(doc, "f) Resistencia y recurrencia: ",
+    "estudiar mecanismos de resistencia a quimioterapia, terapia dirigida e inmunoterapia, as\u00ed como recurrencia tumoral.")
+  doc <- add_bullet(doc, "g) Modelos preclinicos: ",
+    "generar organoides, xenoinjertos derivados de paciente (PDX) o cultivos primarios para evaluar nuevas terapias.")
+  doc <- add_bullet(doc, "h) Formaci\u00f3n acad\u00e9mica: ",
+    "apoyar tesis de pregrado, posgrado y residencias m\u00e9dicas en oncolog\u00eda, anatom\u00eda patol\u00f3gica y biolog\u00eda molecular.")
+  doc <- add_bullet(doc, "i) Colaboraciones: ",
+    "habilitar redes nacionales e internacionales de investigaci\u00f3n bajo Acuerdos de Transferencia de Material (MTA) y c\u00f3digos de gobernanza.")
+  doc <- add_p(doc,
+    paste0("Cada proyecto requiere aprobaci\u00f3n previa del Comit\u00e9 ",
+           "de \u00c9tica y del Comit\u00e9 Cient\u00edfico del biobanco. ",
+           "Ning\u00fan proyecto podr\u00e1 utilizar sus muestras fuera ",
+           "del alcance que usted autorice en la secci\u00f3n 14 de este ",
+           "documento."))
 
-  # ============================================================
-  # 8. CONFIDENCIALIDAD
-  # ============================================================
-  doc <- officer::body_add_par(doc, "8. Confidencialidad y proteccion de datos personales",
-                               style = "heading 2")
-  doc <- officer::body_add_par(doc,
-    paste0("Sus datos personales seran tratados conforme a la Ley Federal ",
-           "de Proteccion de Datos Personales en Posesion de los Particulares ",
-           "(LFPDPPP) y su reglamento. Su identidad sera sustituida por un ",
-           "identificador pseudonimizado (BIOID) generado mediante un ",
-           "hash criptografico HMAC-SHA256. Solo el Custodio del biobanco ",
-           "y el personal autorizado podran vincular el BIOID con su MRN ",
-           "mediante un keystore cifrado simetricamente. Los investigadores ",
-           "que reciban acceso a las muestras solo veran el BIOID y datos ",
-           "clinicos pseudonimizados; no podran reidentificarlo. Cada acceso ",
-           "queda registrado en una bitacora de auditoria inalterable."),
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    paste0("Las publicaciones cientificas, informes y presentaciones que ",
-           "deriven del uso de las muestras nunca incluiran datos que ",
-           "permitan identificarlo."),
-    style = "Normal")
+  # =========================================================================
+  # 7. PROCEDIMIENTO Y TIPOS DE MUESTRA
+  # =========================================================================
+  doc <- add_h1(doc, "7. Procedimiento y tipos de muestra")
+  doc <- add_p(doc,
+    paste0("Las muestras se obtendr\u00e1n exclusivamente durante ",
+           "procedimientos cl\u00ednicos ya programados (cirug\u00eda ",
+           "oncol\u00f3gica, biopsia diagn\u00f3stica, extracci\u00f3n de ",
+           "sangre indicada por su m\u00e9dico). No se realizar\u00e1n ",
+           "intervenciones adicionales ni se aumentar\u00e1 el riesgo de ",
+           "su tratamiento m\u00e9dico. Las muestras que podr\u00e1n ",
+           "almacenarse incluyen:"))
+  doc <- add_p(doc,
+    "\u2022 Tejido tumoral fresco, congelado o en bloque de parafina (FFPE).",
+    indent = TRUE)
+  doc <- add_p(doc,
+    "\u2022 Tejido normal pareado adyacente al tumor.",
+    indent = TRUE)
+  doc <- add_p(doc,
+    "\u2022 Sangre perif\u00e9rica completa, plasma y suero.",
+    indent = TRUE)
+  doc <- add_p(doc,
+    "\u2022 \u00c1cidos nucleicos extra\u00eddos: ADN gen\u00f3mico, ARN, ADN tumoral circulante (ctDNA).",
+    indent = TRUE)
+  doc <- add_p(doc,
+    "\u2022 Cuando aplique, otros fluidos (orina, l\u00edquido pleural, ascitis, l\u00edquido cefalorraqu\u00eddeo) obtenidos por indicaci\u00f3n cl\u00ednica.",
+    indent = TRUE)
+  doc <- add_p(doc,
+    paste0("Las muestras se acompa\u00f1ar\u00e1n de datos cl\u00ednicos ",
+           "relevantes (diagn\u00f3stico, estadificaci\u00f3n, tratamiento, ",
+           "evoluci\u00f3n, histopatolog\u00eda, estudios de imagen y de ",
+           "laboratorio) vinculados \u00fanicamente al BIOID y nunca a su ",
+           "nombre o n\u00famero de expediente."))
 
-  # ============================================================
-  # 9. ALCANCE DEL CONSENTIMIENTO (CHECKBOXES)
-  # ============================================================
-  doc <- officer::body_add_par(doc, "9. Alcance del consentimiento (marque las opciones que autoriza)",
-                               style = "heading 2")
-  doc <- officer::body_add_par(doc,
-    paste0("Marque cada casilla solo si esta de acuerdo. Puede aceptar ",
-           "algunos usos y rechazar otros. Puede tambien modificar estas ",
-           "autorizaciones en el futuro contactando al Custodio del biobanco."),
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    "[ ] 9.1  Autorizo el uso de mis muestras para investigacion oncologica general (consentimiento amplio / broad consent), siempre que cada proyecto sea aprobado por el Comite de Etica.",
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    "[ ] 9.2  Autorizo estudios genomicos, de secuenciacion masiva (NGS), exoma, transcriptoma, epigenoma o paneles dirigidos sobre mi material biologico.",
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    "[ ] 9.3  Autorizo el desarrollo y validacion de modelos de aprendizaje automatico / inteligencia artificial sobre mis datos pseudonimizados.",
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    "[ ] 9.4  Autorizo ser re-contactado por el biobanco para invitarme a estudios futuros relacionados con mi diagnostico o para confirmar / actualizar este consentimiento.",
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    "[ ] 9.5  Autorizo compartir mis muestras y datos pseudonimizados con colaboradores academicos externos (nacionales o internacionales) bajo un Acuerdo de Transferencia de Material (MTA) aprobado por la institucion.",
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    "[ ] 9.6  Autorizo el uso de mis muestras y datos pseudonimizados en proyectos colaborativos con empresas farmaceuticas, biotecnologicas o de diagnostico, bajo MTA, sin que esto genere derechos comerciales a mi favor.",
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    "[ ] 9.7  Autorizo que, si durante la investigacion se obtienen hallazgos clinicamente significativos y accionables sobre mi salud, el biobanco pueda contactar a mi medico tratante para informarle (devolucion de hallazgos secundarios).",
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
+  # =========================================================================
+  # 8. CALIDAD Y TRAZABILIDAD
+  # =========================================================================
+  doc <- add_h1(doc, "8. Calidad y trazabilidad de las muestras")
+  doc <- add_p(doc,
+    paste0("Cada muestra se procesa siguiendo Procedimientos Normalizados ",
+           "de Operaci\u00f3n (SOPs) basados en ISBER Best Practices 2018: ",
+           "tiempo isqu\u00e9mico controlado, temperatura monitoreada en ",
+           "tiempo real, alicuotaci\u00f3n para minimizar ciclos de ",
+           "congelaci\u00f3n-descongelaci\u00f3n, y registro electr\u00f3nico ",
+           "inmutable de cada paso (cadena de custodia). Esto garantiza ",
+           "que los resultados de investigaci\u00f3n derivados sean ",
+           "reproducibles y de calidad publicable."))
+
+  doc <- officer::body_add_break(doc)
+
+  # =========================================================================
+  # 9. RIESGOS
+  # =========================================================================
+  doc <- add_h1(doc, "9. Riesgos")
+  doc <- add_p(doc,
+    paste0("La donaci\u00f3n no agrega riesgos f\u00edsicos a los ya ",
+           "asociados al procedimiento cl\u00ednico que de cualquier manera ",
+           "se realizar\u00eda. Los principales riesgos residuales son:"))
+  doc <- add_bullet(doc, "P\u00e9rdida de confidencialidad: ",
+    "mitigada por pseudonimizaci\u00f3n criptogr\u00e1fica (BIOID generado v\u00eda HMAC-SHA256), almacenamiento cifrado del mapeo identidad-muestra, control de acceso por roles y auditor\u00eda inmutable de cada acceso.")
+  doc <- add_bullet(doc, "Hallazgos incidentales: ",
+    "podr\u00edan surgir en estudios genet\u00edcos hallazgos sobre predisposici\u00f3n a otras enfermedades. Solo se le notificar\u00e1n los hallazgos accionables y siempre con asesor\u00eda gen\u00e9tica previa.")
+  doc <- add_bullet(doc, "Reidentificaci\u00f3n por datos gen\u00f3micos: ",
+    "los datos gen\u00f3micos son intr\u00ednsecamente \u00fanicos. El biobanco aplica controles de acceso y nunca publica datos gen\u00f3micos crudos en repositorios abiertos sin pol\u00edticas de acceso controlado (dbGaP, EGA o equivalente nacional).")
+  doc <- add_bullet(doc, "Discriminaci\u00f3n: ",
+    "ning\u00fan resultado individual ser\u00e1 compartido con su empleador, aseguradora ni terceros, dada la sensibilidad social y legal de los datos gen\u00e9ticos (excepcionalismo gen\u00e9tico).")
+
+  # =========================================================================
+  # 10. BENEFICIOS
+  # =========================================================================
+  doc <- add_h1(doc, "10. Beneficios")
+  doc <- add_p(doc,
+    paste0("La donaci\u00f3n no representa un beneficio directo inmediato ",
+           "para usted. Los beneficios esperados son indirectos y a mediano ",
+           "o largo plazo: la investigaci\u00f3n derivada puede mejorar el ",
+           "diagn\u00f3stico, el pron\u00f3stico y los tratamientos ",
+           "disponibles para futuros pacientes con c\u00e1ncer, ",
+           "particularmente en M\u00e9xico, donde existe sub-representaci\u00f3n ",
+           "en cohortes internacionales. Su participaci\u00f3n contribuye a ",
+           "que la medicina de precisi\u00f3n sea m\u00e1s equitativa."))
+
+  # =========================================================================
+  # 11. TIEMPO DE ALMACENAMIENTO
+  # =========================================================================
+  doc <- add_h1(doc, "11. Tiempo y condiciones de almacenamiento")
+  doc <- add_p(doc,
+    paste0("Las muestras y los datos asociados se almacenar\u00e1n por un ",
+           "periodo inicial de hasta veinte (20) a\u00f1os contados desde ",
+           "la fecha de firma de este consentimiento. El plazo podr\u00e1 ",
+           "renovarse por periodos iguales si el biobanco se mantiene ",
+           "activo y los proyectos as\u00ed lo requieren. Antes de cada ",
+           "renovaci\u00f3n, el Comit\u00e9 de \u00c9tica revisar\u00e1 la ",
+           "pertinencia cient\u00edfica del acervo."))
+  doc <- add_p(doc,
+    paste0("Las muestras se conservan a temperaturas controladas (-80 \u00b0C, ",
+           "-196 \u00b0C en nitr\u00f3geno l\u00edquido o 4 \u00b0C seg\u00fan ",
+           "el tipo) en instalaciones con respaldo el\u00e9ctrico, monitoreo ",
+           "24/7 y planes de contingencia documentados."))
+  doc <- add_p(doc,
+    paste0("Si el biobanco cesara operaciones, sus muestras ser\u00e1n: ",
+           "(i) destruidas conforme a la NOM-087-SEMARNAT-SSA1-2002 ",
+           "(residuos peligrosos biol\u00f3gico-infecciosos), o ",
+           "(ii) transferidas a otro biobanco autorizado, decisi\u00f3n que ",
+           "ser\u00e1 comunicada al Comit\u00e9 de \u00c9tica. Usted puede ",
+           "solicitar en cualquier momento la destrucci\u00f3n de las ",
+           "muestras no utilizadas (secci\u00f3n 16. Derechos)."))
+
+  # =========================================================================
+  # 12. CONFIDENCIALIDAD
+  # =========================================================================
+  doc <- add_h1(doc, "12. Confidencialidad y protecci\u00f3n de datos personales")
+  doc <- add_p(doc,
+    paste0("Sus datos personales ser\u00e1n tratados conforme a la Ley ",
+           "Federal de Protecci\u00f3n de Datos Personales en Posesi\u00f3n ",
+           "de los Particulares (LFPDPPP) y su reglamento. Los datos de ",
+           "salud son considerados sensibles y por ello reciben las ",
+           "siguientes medidas reforzadas:"))
+  doc <- add_bullet(doc, "Pseudonimizaci\u00f3n: ",
+    "su identidad se sustituye por un BIOID generado mediante HMAC-SHA256 con sal institucional.")
+  doc <- add_bullet(doc, "Cifrado: ",
+    "el mapeo BIOID \u2194 MRN se conserva cifrado simet\u00e9ricamente, con clave bajo custodia exclusiva del Custodio del biobanco.")
+  doc <- add_bullet(doc, "Acceso por roles: ",
+    "los investigadores reciben \u00fanicamente datos pseudonimizados; nunca su nombre, direcci\u00f3n ni n\u00famero de expediente.")
+  doc <- add_bullet(doc, "Auditor\u00eda: ",
+    "cada acceso queda registrado en una bit\u00e1cora inmutable, revisada peri\u00f3dicamente.")
+  doc <- add_bullet(doc, "Publicaciones: ",
+    "los art\u00edculos cient\u00edficos, informes y presentaciones nunca incluir\u00e1n datos que permitan identificarlo.")
+
+  doc <- officer::body_add_break(doc)
+
+  # =========================================================================
+  # 13. ASPECTOS ETICOS ESPECIALES
+  # =========================================================================
+  doc <- add_h1(doc, "13. Aspectos \u00e9ticos especiales")
+  doc <- add_h2(doc, "13.1 Vulnerabilidad")
+  doc <- add_p(doc,
+    paste0("Si usted pertenece a un grupo que pudiera considerarse ",
+           "vulnerable (menor de edad, persona con capacidad disminuida ",
+           "para decidir, comunidad ind\u00edgena, persona privada de la ",
+           "libertad), el biobanco aplica salvaguardas adicionales: ",
+           "consentimiento del representante legal, asentimiento del menor ",
+           "cuando sea posible, materiales en lengua materna y revisi\u00f3n ",
+           "espec\u00edfica del Comit\u00e9 de \u00c9tica."))
+  doc <- add_h2(doc, "13.2 Excepcionalismo gen\u00e9tico")
+  doc <- add_p(doc,
+    paste0("Los datos gen\u00e9ticos pueden afectar tambi\u00e9n a sus ",
+           "familiares biol\u00f3gicos. El biobanco no compartir\u00e1 ",
+           "informaci\u00f3n gen\u00e9tica individual con familiares sin su ",
+           "consentimiento explicito. Si autoriza la opci\u00f3n 14.7 ",
+           "(hallazgos accionables), se ofrecer\u00e1 asesor\u00eda gen\u00e9tica ",
+           "para discutir las implicaciones familiares."))
+  doc <- add_h2(doc, "13.3 Soberan\u00eda de datos y equidad")
+  doc <- add_p(doc,
+    paste0("Las muestras y datos pseudonimizados que salgan del pa\u00eds ",
+           "lo har\u00e1n bajo MTA que garantizan: (i) prop\u00f3sito de uso ",
+           "espec\u00edfico, (ii) prohibici\u00f3n de re-transferencia sin ",
+           "autorizaci\u00f3n, (iii) reconocimiento de la institucio\u0301n ",
+           "mexicana en publicaciones, y (iv) acceso retorno-equitativo a ",
+           "los hallazgos para la investigaci\u00f3n nacional."))
+  doc <- add_h2(doc, "13.4 Conflicto de inter\u00e9s")
+  doc <- add_p(doc,
+    paste0("Los investigadores que accedan al biobanco declaran sus ",
+           "conflictos de inter\u00e9s al Comit\u00e9 de \u00c9tica. Las ",
+           "muestras no se otorgar\u00e1n a proyectos con conflictos no ",
+           "resueltos. Los pacientes no tienen obligaci\u00f3n de participar ",
+           "en proyectos espec\u00edficos."))
+  doc <- add_h2(doc, "13.5 Compromiso de no comercializaci\u00f3n directa")
+  doc <- add_p(doc,
+    paste0("Las muestras no se venden. El biobanco puede recuperar ",
+           "costos operativos (procesamiento, almacenamiento, env\u00edo) ",
+           "pero no obtiene lucro de su distribuci\u00f3n."))
+
+  # =========================================================================
+  # 14. ALCANCE DEL CONSENTIMIENTO
+  # =========================================================================
+  doc <- add_h1(doc, "14. Alcance del consentimiento")
+  doc <- add_p(doc,
+    paste0("Marque cada casilla \u00fanicamente si est\u00e1 de acuerdo. ",
+           "Puede aceptar algunos usos y rechazar otros, y puede modificar ",
+           "estas autorizaciones en el futuro contactando al Custodio."))
+  doc <- add_p(doc,
+    "[ ] 14.1  Autorizo el uso de mis muestras para investigaci\u00f3n oncol\u00f3gica general (consentimiento amplio / broad consent), siempre que cada proyecto sea aprobado por el Comit\u00e9 de \u00c9tica y el Comit\u00e9 Cient\u00edfico del biobanco.",
+    indent = TRUE)
+  doc <- add_p(doc,
+    "[ ] 14.2  Autorizo estudios gen\u00f3micos: secuenciaci\u00f3n masiva (NGS), exoma, gen\u00f3mica completa, transcript\u00f3mica, epigen\u00f3mica o paneles dirigidos.",
+    indent = TRUE)
+  doc <- add_p(doc,
+    "[ ] 14.3  Autorizo el desarrollo y validaci\u00f3n de modelos de aprendizaje autom\u00e1tico / inteligencia artificial sobre mis datos pseudonimizados.",
+    indent = TRUE)
+  doc <- add_p(doc,
+    "[ ] 14.4  Autorizo la generaci\u00f3n de modelos prec\u00ednicos derivados (organoides, l\u00edneas celulares, xenoinjertos PDX).",
+    indent = TRUE)
+  doc <- add_p(doc,
+    "[ ] 14.5  Autorizo ser re-contactado por el biobanco para invitarme a estudios futuros relacionados con mi diagn\u00f3stico o para confirmar / actualizar este consentimiento.",
+    indent = TRUE)
+  doc <- add_p(doc,
+    "[ ] 14.6  Autorizo compartir mis muestras y datos pseudonimizados con colaboradores acad\u00e9micos externos (nacionales o internacionales) bajo MTA aprobado por la instituci\u00f3n.",
+    indent = TRUE)
+  doc <- add_p(doc,
+    "[ ] 14.7  Autorizo el uso de mis muestras y datos pseudonimizados en proyectos colaborativos con empresas farmac\u00e9uticas, biotecnol\u00f3gicas o de diagn\u00f3stico, bajo MTA, sin que esto genere derechos comerciales a mi favor.",
+    indent = TRUE)
+  doc <- add_p(doc,
+    "[ ] 14.8  Autorizo que, si durante la investigaci\u00f3n se obtienen hallazgos cl\u00ednicamente significativos y accionables sobre mi salud, el biobanco contacte a mi m\u00e9dico tratante para informarle (devoluci\u00f3n de hallazgos secundarios).",
+    indent = TRUE)
+  doc <- add_p(doc,
+    "[ ] 14.9  Autorizo el dep\u00f3sito de mis datos gen\u00f3micos pseudonimizados en repositorios cient\u00edficos de acceso controlado (dbGaP, EGA o equivalente nacional).",
+    indent = TRUE)
+  doc <- add_p(doc,
     paste0("Renuncia a derechos comerciales: entiendo que las muestras se ",
-           "donan sin contraprestacion economica y que cualquier desarrollo, ",
-           "patente o producto derivado de la investigacion no genera ",
-           "derechos comerciales ni regalias a mi favor."),
-    style = "Normal")
+           "donan sin contraprestaci\u00f3n econ\u00f3mica y que cualquier ",
+           "desarrollo, patente o producto derivado de la investigaci\u00f3n ",
+           "no genera derechos comerciales ni regal\u00edas a mi favor."))
 
-  # ============================================================
-  # 10. DERECHOS DEL PARTICIPANTE
-  # ============================================================
-  doc <- officer::body_add_par(doc, "10. Derechos del participante (ARCO + retiro)",
-                               style = "heading 2")
-  doc <- officer::body_add_par(doc,
+  # =========================================================================
+  # 15. COMPARTICION
+  # =========================================================================
+  doc <- add_h1(doc, "15. Compartici\u00f3n de muestras y datos (FAIR + soberan\u00eda)")
+  doc <- add_p(doc,
+    paste0("El biobanco adopta los principios FAIR (Findable, Accessible, ",
+           "Interoperable, Reusable) para maximizar el valor cient\u00edfico ",
+           "de los datos. Toda compartici\u00f3n internacional se realiza ",
+           "bajo MTA institucional que respeta los derechos de los donantes ",
+           "y la soberan\u00eda nacional."))
+
+  # =========================================================================
+  # 16. DERECHOS
+  # =========================================================================
+  doc <- add_h1(doc, "16. Derechos del participante (ARCO + retiro)")
+  doc <- add_p(doc,
     paste0("De acuerdo con la LFPDPPP, en cualquier momento usted puede ",
-           "ejercer sus derechos de Acceso, Rectificacion, Cancelacion y ",
-           "Oposicion (ARCO) sobre sus datos personales, asi como retirar ",
-           "este consentimiento, sin que ello afecte su atencion medica."),
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    "- Acceso: solicitar conocer que datos suyos conserva el biobanco.",
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    "- Rectificacion: corregir datos inexactos o incompletos.",
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    "- Cancelacion: solicitar la eliminacion de sus datos personales y la destruccion de sus muestras no utilizadas.",
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    "- Oposicion: retirar autorizaciones especificas (por ejemplo, retirar el permiso de re-contacto sin retirar la donacion completa).",
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
+           "ejercer sus derechos ARCO sobre sus datos personales, as\u00ed ",
+           "como retirar este consentimiento, sin que ello afecte su ",
+           "atenci\u00f3n m\u00e9dica:"))
+  doc <- add_bullet(doc, "Acceso: ",
+    "solicitar conocer qu\u00e9 datos suyos conserva el biobanco.")
+  doc <- add_bullet(doc, "Rectificaci\u00f3n: ",
+    "corregir datos inexactos o incompletos.")
+  doc <- add_bullet(doc, "Cancelaci\u00f3n: ",
+    "solicitar la eliminaci\u00f3n de sus datos personales y la destrucci\u00f3n de sus muestras no utilizadas.")
+  doc <- add_bullet(doc, "Oposici\u00f3n: ",
+    "retirar autorizaciones espec\u00edficas (por ejemplo, retirar el permiso de re-contacto sin retirar la donaci\u00f3n completa).")
+  doc <- add_p(doc,
     paste0("La retirada del consentimiento implica que las muestras no ",
-           "utilizadas seran destruidas. Los datos y resultados ya generados ",
-           "y publicados antes de la retirada permaneceran de manera ",
-           "anonimizada en estudios concluidos, dado que tecnicamente no ",
-           "es posible eliminarlos de publicaciones cientificas ya hechas."),
-    style = "Normal")
+           "utilizadas ser\u00e1n destruidas. Los datos y resultados ya ",
+           "publicados antes de la retirada permanecer\u00e1n de manera ",
+           "anonimizada en estudios concluidos, dado que t\u00e9cnicamente ",
+           "no es posible eliminarlos de publicaciones cient\u00edficas ",
+           "ya difundidas."))
 
-  # ============================================================
-  # 11. COMPENSACION
-  # ============================================================
-  doc <- officer::body_add_par(doc, "11. Compensacion economica",
-                               style = "heading 2")
-  doc <- officer::body_add_par(doc,
-    paste0("La donacion es estrictamente altruista y no genera ningun ",
-           "pago, compensacion economica, regalia ni beneficio material ",
-           "para usted o sus familiares. El biobanco tampoco le cobrara ",
-           "por almacenar sus muestras."),
-    style = "Normal")
+  doc <- officer::body_add_break(doc)
 
-  # ============================================================
-  # 12. DEVOLUCION DE RESULTADOS
-  # ============================================================
-  doc <- officer::body_add_par(doc, "12. Devolucion de resultados",
-                               style = "heading 2")
-  doc <- officer::body_add_par(doc,
-    paste0("La mayoria de los resultados de investigacion no se devuelven ",
-           "individualmente porque su validez clinica no esta establecida. ",
-           "Si autorizo la opcion 9.7, el biobanco podra notificar a mi ",
-           "medico tratante en caso de hallazgos secundarios accionables ",
+  # =========================================================================
+  # 17. COMPENSACION
+  # =========================================================================
+  doc <- add_h1(doc, "17. Compensaci\u00f3n econ\u00f3mica")
+  doc <- add_p(doc,
+    paste0("La donaci\u00f3n es estrictamente altruista y no genera ",
+           "ning\u00fan pago, compensaci\u00f3n econ\u00f3mica, regal\u00eda ",
+           "ni beneficio material para usted o sus familiares. El biobanco ",
+           "tampoco le cobrar\u00e1 por almacenar sus muestras."))
+
+  # =========================================================================
+  # 18. DEVOLUCION DE RESULTADOS
+  # =========================================================================
+  doc <- add_h1(doc, "18. Devoluci\u00f3n de resultados")
+  doc <- add_p(doc,
+    paste0("La mayor\u00eda de los resultados de investigaci\u00f3n no se ",
+           "devuelven individualmente porque su validez cl\u00ednica no ",
+           "est\u00e1 establecida (los m\u00e9todos pueden ser experimentales). ",
+           "Si autoriza la opci\u00f3n 14.8, el biobanco podr\u00e1 notificar ",
+           "a su m\u00e9dico tratante hallazgos secundarios accionables ",
            "(por ejemplo, variantes germinales con implicaciones para ",
-           "familiares directos), siempre con asesoramiento genetico ",
-           "previo. Los resultados agregados (no individuales) podran ",
-           "consultarse en publicaciones cientificas."),
-    style = "Normal")
+           "familiares directos), siempre con asesor\u00eda gen\u00e9tica ",
+           "previa. Los resultados agregados (no individuales) podr\u00e1n ",
+           "consultarse en publicaciones cient\u00edficas y en informes ",
+           "comunitarios del biobanco."))
 
-  # ============================================================
-  # 13. CUSTODIO
-  # ============================================================
-  doc <- officer::body_add_par(doc, "13. Custodio del biobanco y datos de contacto",
-                               style = "heading 2")
-  doc <- officer::body_add_par(doc,
-    "Custodio responsable: _________________________________________________",
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    "Cargo institucional:  _________________________________________________",
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    "Telefono de contacto: _________________   Correo: _____________________",
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
+  # =========================================================================
+  # 19. CUSTODIO
+  # =========================================================================
+  doc <- add_h1(doc, "19. Custodio del biobanco y datos de contacto")
+  doc <- add_p(doc, "Custodio responsable: _________________________________________________")
+  doc <- add_p(doc, "Cargo institucional:  _________________________________________________")
+  doc <- add_p(doc, "Tel\u00e9fono de contacto: _________________   Correo: ____________________")
+  doc <- add_p(doc,
     paste0("Para ejercer sus derechos ARCO, retirar el consentimiento, ",
-           "actualizar autorizaciones o resolver dudas relacionadas con ",
-           "el biobanco, contacte al Custodio."),
-    style = "Normal")
+           "actualizar autorizaciones o resolver dudas, contacte al ",
+           "Custodio."))
 
-  # ============================================================
-  # 14. COMITE DE ETICA
-  # ============================================================
-  doc <- officer::body_add_par(doc, "14. Comite de Etica en Investigacion (CEI)",
-                               style = "heading 2")
-  doc <- officer::body_add_par(doc,
-    paste0("Si tiene dudas sobre sus derechos como participante o desea ",
-           "presentar una queja independiente, puede contactar al Comite ",
-           "de Etica en Investigacion de la institucion:"),
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    "Comite de Etica:      _________________________________________________",
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    "Numero de registro CONBIOETICA: _____________   COFEPRIS: _____________",
-    style = "Normal")
-  doc <- officer::body_add_par(doc,
-    "Telefono / correo:    _________________________________________________",
-    style = "Normal")
+  # =========================================================================
+  # 20. CEI
+  # =========================================================================
+  doc <- add_h1(doc, "20. Comit\u00e9 de \u00c9tica en Investigaci\u00f3n (CEI)")
+  doc <- add_p(doc,
+    paste0("Si tiene dudas sobre sus derechos o desea presentar una queja ",
+           "independiente, puede contactar al Comit\u00e9 de \u00c9tica en ",
+           "Investigaci\u00f3n de la instituci\u00f3n:"))
+  doc <- add_p(doc, "Comit\u00e9 de \u00c9tica:      _________________________________________________")
+  doc <- add_p(doc, "Registro CONBIOETICA: _____________   Registro COFEPRIS: _____________")
+  doc <- add_p(doc, "Tel\u00e9fono / correo:    _________________________________________________")
 
-  # ============================================================
-  # 15. DECLARACION DEL PARTICIPANTE
-  # ============================================================
-  doc <- officer::body_add_par(doc, "15. Declaracion del participante",
-                               style = "heading 2")
-  doc <- officer::body_add_par(doc,
-    paste0("Declaro que he leido (o me ha sido leido) este documento, ",
-           "que se me han explicado en lenguaje comprensible los fines, ",
-           "procedimientos, riesgos, beneficios, alcance y duracion del ",
-           "almacenamiento de mis muestras, asi como mis derechos. Se me ",
-           "ha dado oportunidad de hacer preguntas y todas han sido ",
-           "respondidas de manera satisfactoria. Se me entrega una copia ",
-           "firmada de este documento. Acepto participar voluntariamente."),
-    style = "Normal")
+  # =========================================================================
+  # 21. DECLARACION
+  # =========================================================================
+  doc <- add_h1(doc, "21. Declaraci\u00f3n del participante")
+  doc <- add_p(doc,
+    paste0("Declaro que he le\u00eddo (o me ha sido le\u00eddo) este ",
+           "documento, que se me han explicado en lenguaje comprensible ",
+           "los objetivos, fines, procedimientos, riesgos, beneficios, ",
+           "alcance y duraci\u00f3n del almacenamiento de mis muestras, ",
+           "as\u00ed como mis derechos. Se me ha dado oportunidad de hacer ",
+           "preguntas y todas han sido respondidas de manera satisfactoria. ",
+           "Se me entrega una copia firmada de este documento. Acepto ",
+           "participar voluntariamente."))
 
-  # ============================================================
-  # 16. FIRMAS
-  # ============================================================
-  doc <- officer::body_add_par(doc, "", style = "Normal")
-  doc <- officer::body_add_par(doc, "16. Firmas", style = "heading 2")
-
+  # =========================================================================
+  # 22. FIRMAS
+  # =========================================================================
+  doc <- add_h1(doc, "22. Firmas")
   firmas <- data.frame(
     Rol = c("Participante (donante)",
             "Representante legal (si aplica)",
             "Testigo 1",
             "Testigo 2",
-            "Investigador / clinico responsable",
+            "Investigador / cl\u00ednico responsable",
             "Custodio del biobanco"),
     Nombre = rep("_______________________________________", 6L),
     Firma  = rep("__________________  Fecha: ____________", 6L),
-    stringsAsFactors = FALSE
-  )
-  doc <- officer::body_add_table(doc, firmas, style = "table_template")
+    stringsAsFactors = FALSE)
+  doc <- officer::body_add_table(doc, firmas, style = "Light Grid Accent 1",
+                                 first_column = TRUE)
 
-  # ============================================================
-  # PIE
-  # ============================================================
   doc <- officer::body_add_par(doc, "", style = "Normal")
-  doc <- officer::body_add_par(doc,
-    paste0("Documento generado por el sistema Krebs V0.2 el ", hoy,
-           ". Imprima en hoja membretada institucional. ",
-           "Conserve la copia firmada por el participante en el expediente ",
-           "del biobanco y registre el numero de version y fecha en el ",
-           "modulo de Consentimientos del sistema."),
-    style = "Normal")
+  doc <- officer::body_add_fpar(doc, officer::fpar(
+    officer::ftext(paste0("Documento generado por el sistema Krebs V0.2 el ",
+                          hoy, ". Imprima en hoja membretada institucional. ",
+                          "Conserve la copia firmada en el expediente del ",
+                          "biobanco y registre la versi\u00f3n y fecha en el ",
+                          "m\u00f3dulo de Consentimientos del sistema."),
+                   fmt_small),
+    fp_p = par_just))
 
   print(doc, target = out_path)
   invisible(out_path)
@@ -436,103 +614,92 @@ biobank_icf_docx <- function(out_path, patient = NULL, bio_subject = NULL) {
   pmrn  <- patient$mrn    %||% "_______________"
   psex  <- patient$sexo   %||% "____"
   page  <- if (!is.null(patient$edad) && !is.na(patient$edad))
-             sprintf("%d anos", as.integer(patient$edad))
-           else "____ anos"
+             sprintf("%d a\u00f1os", as.integer(patient$edad))
+           else "____ a\u00f1os"
   pdx   <- patient$tipo_cancer %||% "_______________________________"
-  bsid  <- bio_subject$bio_subject_id %||% "(se asignara al firmar)"
+  bsid  <- bio_subject$bio_subject_id %||% "(se asignar\u00e1 al firmar)"
   hosp  <- bio_subject$hospital_code  %||% "____"
   hoy   <- format(Sys.Date(), "%Y-%m-%d")
 
   txt <- c(
-    "CONSENTIMIENTO INFORMADO PARA DONACION DE MUESTRAS BIOLOGICAS",
-    "BIOBANCO ONCOLOGICO KREBS",
-    sprintf("Protocolo IRB: TDM-CEI-2026-V1   Hospital: %s   Version: ICF-Krebs-v1.0-2026   Fecha: %s",
+    "CONSENTIMIENTO INFORMADO PARA DONACI\u00d3N DE MUESTRAS BIOL\u00d3GICAS",
+    "BIOBANCO ONCOL\u00d3GICO KREBS",
+    sprintf("Protocolo IRB: TDM-CEI-2026-V1   Hospital: %s   Versi\u00f3n: ICF-Krebs-v1.0-2026   Fecha: %s",
             hosp, hoy),
+    "Marco normativo: NOM-012-SSA3-2012 \u00b7 LGS T\u00edtulo Quinto \u00b7 LFPDPPP \u00b7 Helsinki 2013 \u00b7 CIOMS 2016 \u00b7 ISBER 2018",
     "",
     "1. Datos del participante",
     sprintf("   Nombre:       %s", pname),
     sprintf("   MRN:          %s", pmrn),
     sprintf("   Sexo:         %s    Edad: %s", psex, page),
-    sprintf("   Diagnostico:  %s", pdx),
+    sprintf("   Diagn\u00f3stico:  %s", pdx),
     sprintf("   BIOID:        %s", bsid),
     sprintf("   Hospital:     %s", hosp),
     sprintf("   Fecha:        %s", hoy),
     "",
-    "2. Invitacion a participar",
-    "   Donacion voluntaria al Biobanco Oncologico Krebs para investigacion",
-    "   biomedica aprobada por el Comite de Etica.",
+    "2. Marco \u00e9tico (autonom\u00eda, beneficencia, no maleficencia, justicia).",
+    "3. Invitaci\u00f3n voluntaria al Biobanco Oncol\u00f3gico Krebs.",
+    "4. Naturaleza voluntaria: no participar no afecta su atenci\u00f3n.",
+    "5. Prop\u00f3sito: acervo institucional para investigaci\u00f3n traslacional.",
+    "6. Objetivos cient\u00edficos: bases moleculares, biomarcadores, medicina",
+    "   de precisi\u00f3n, epidemiolog\u00eda molecular, microambiente, resistencia,",
+    "   modelos prec\u00ednicos, formaci\u00f3n acad\u00e9mica, colaboraciones bajo MTA.",
+    "7. Procedimiento: tejido tumoral / normal pareado / sangre / plasma /",
+    "   suero / ADN-ARN / fluidos por indicaci\u00f3n cl\u00ednica.",
+    "8. Calidad y trazabilidad bajo SOPs ISBER 2018.",
+    "9. Riesgos: confidencialidad (mitigada por BIOID HMAC-SHA256),",
+    "   hallazgos incidentales, reidentificaci\u00f3n gen\u00f3mica, discriminaci\u00f3n.",
+    "10. Beneficios: indirectos, para futuros pacientes; equidad en MX.",
+    "11. Almacenamiento: hasta 20 a\u00f1os renovables; -80\u00b0C / -196\u00b0C /",
+    "    NOM-087-SEMARNAT-SSA1-2002 al destruir.",
+    "12. Confidencialidad LFPDPPP: pseudonimizaci\u00f3n + cifrado + roles +",
+    "    auditor\u00eda; nunca publicar identificadores.",
+    "13. Aspectos \u00e9ticos especiales:",
+    "    13.1 Vulnerabilidad (menores, comunidades ind\u00edgenas, etc.).",
+    "    13.2 Excepcionalismo gen\u00e9tico (impacto familiar).",
+    "    13.3 Soberan\u00eda de datos: MTA con prop\u00f3sito espec\u00edfico, sin",
+    "         re-transferencia, reconocimiento institucional, retorno equitativo.",
+    "    13.4 Conflicto de inter\u00e9s: declarado al CEI.",
+    "    13.5 Compromiso de no comercializaci\u00f3n directa.",
     "",
-    "3. Proposito y fines de la investigacion",
-    "   a) Comprender mecanismos biologicos del cancer.",
-    "   b) Identificar biomarcadores diagnosticos / pronosticos / predictivos.",
-    "   c) Desarrollar y validar nuevas terapias y pruebas diagnosticas.",
-    "   d) Estudiar la epidemiologia molecular del cancer en Mexico.",
-    "   e) Apoyar tesis, posgrado y publicaciones cientificas.",
-    "   f) Habilitar colaboraciones nacionales e internacionales bajo MTA.",
+    "14. Alcance del consentimiento (marque con X)",
+    "    [ ] 14.1  Investigaci\u00f3n oncol\u00f3gica general (broad consent)",
+    "    [ ] 14.2  Estudios gen\u00f3micos / NGS / exoma / transcriptoma",
+    "    [ ] 14.3  Modelos de IA / aprendizaje autom\u00e1tico",
+    "    [ ] 14.4  Modelos prec\u00ednicos (organoides / PDX / l\u00edneas)",
+    "    [ ] 14.5  Re-contacto para estudios futuros",
+    "    [ ] 14.6  Compartir con colaboradores externos bajo MTA",
+    "    [ ] 14.7  Uso por farmac\u00e9uticas / biotech bajo MTA",
+    "    [ ] 14.8  Devoluci\u00f3n de hallazgos secundarios accionables",
+    "    [ ] 14.9  Dep\u00f3sito en repositorios de acceso controlado (dbGaP, EGA)",
+    "    Renuncia a derechos comerciales: donaci\u00f3n altruista, sin regal\u00edas.",
     "",
-    "4. Naturaleza voluntaria",
-    "   No participar no afecta su atencion medica.",
-    "",
-    "5. Procedimiento y tipos de muestra",
-    "   Tejido tumoral, tejido normal pareado, sangre, plasma, suero,",
-    "   ADN/ARN extraidos, otros fluidos por indicacion clinica.",
-    "   Obtenidas durante procedimientos clinicos ya programados.",
-    "",
-    "6. Riesgos y beneficios",
-    "   Riesgos minimos (perdida de confidencialidad mitigada por BIOID).",
-    "   Sin beneficio directo; beneficio potencial para futuros pacientes.",
-    "",
-    "7. Tiempo de almacenamiento",
-    "   Hasta 20 anos desde la firma, renovable previa revision del CEI.",
-    "   Puede solicitar la destruccion en cualquier momento.",
-    "",
-    "8. Confidencialidad (LFPDPPP)",
-    "   BIOID via HMAC-SHA256. Mapeo cifrado bajo custodia exclusiva.",
-    "   Bitacora de auditoria de cada acceso.",
-    "",
-    "9. Alcance del consentimiento (marque con X)",
-    "   [ ] 9.1  Investigacion oncologica general (broad consent)",
-    "   [ ] 9.2  Estudios genomicos / secuenciacion masiva (NGS)",
-    "   [ ] 9.3  Modelos de IA / aprendizaje automatico",
-    "   [ ] 9.4  Re-contacto para estudios futuros",
-    "   [ ] 9.5  Compartir con colaboradores externos bajo MTA",
-    "   [ ] 9.6  Uso por empresas farmaceuticas / biotech bajo MTA",
-    "   [ ] 9.7  Devolucion de hallazgos secundarios accionables",
-    "   Renuncia a derechos comerciales: donacion altruista, sin regalias.",
-    "",
-    "10. Derechos ARCO + retiro",
-    "    Acceso, Rectificacion, Cancelacion, Oposicion. Retiro sin afectar",
-    "    su atencion medica.",
-    "",
-    "11. Compensacion economica",
-    "    Donacion altruista, sin pago ni regalias.",
-    "",
-    "12. Devolucion de resultados",
-    "    Solo hallazgos accionables si autorizo opcion 9.7.",
-    "",
-    "13. Custodio del biobanco",
+    "15. Compartici\u00f3n FAIR + soberan\u00eda nacional bajo MTA institucional.",
+    "16. Derechos ARCO + retiro: Acceso, Rectificaci\u00f3n, Cancelaci\u00f3n, Oposici\u00f3n.",
+    "17. Compensaci\u00f3n econ\u00f3mica: ninguna; donaci\u00f3n altruista.",
+    "18. Devoluci\u00f3n de resultados: solo accionables si autoriza opci\u00f3n 14.8.",
+    "19. Custodio del biobanco",
     "    Nombre: _______________________  Cargo: _______________________",
     "    Tel:    _______________________  Correo: ______________________",
+    "20. Comit\u00e9 de \u00c9tica en Investigaci\u00f3n",
+    "    CEI: _________________________  CONBIOETICA: ___________________",
+    "    Tel/Correo: _____________________________________________________",
+    "21. Declaraci\u00f3n del participante: he comprendido y acepto participar.",
     "",
-    "14. Comite de Etica en Investigacion",
-    "    Comite: _________________________   CONBIOETICA: ____________",
-    "    Tel/Correo: ____________________________________________________",
-    "",
-    "15. Declaracion del participante",
-    "    He leido el documento; se me explicaron fines, procedimientos,",
-    "    riesgos, beneficios, alcance y duracion. Acepto participar.",
-    "",
-    "16. Firmas",
-    "    Participante:        _______________________  Fecha: __________",
-    "    Repr. legal (si aplica): ___________________  Fecha: __________",
-    "    Testigo 1:           _______________________  Fecha: __________",
-    "    Testigo 2:           _______________________  Fecha: __________",
-    "    Investigador:        _______________________  Fecha: __________",
-    "    Custodio biobanco:   _______________________  Fecha: __________",
+    "22. Firmas",
+    "    Participante:           _______________________  Fecha: __________",
+    "    Repr. legal (si aplica): ______________________  Fecha: __________",
+    "    Testigo 1:              _______________________  Fecha: __________",
+    "    Testigo 2:              _______________________  Fecha: __________",
+    "    Investigador:           _______________________  Fecha: __________",
+    "    Custodio biobanco:      _______________________  Fecha: __________",
     "",
     paste0("Generado por Krebs V0.2 el ", hoy,
            " (fallback texto: 'officer' no instalado en el servidor).")
   )
-  writeLines(txt, out_path, useBytes = TRUE)
+  # UTF-8 explicito para acentos
+  con <- file(out_path, open = "wb", encoding = "UTF-8")
+  on.exit(close(con), add = TRUE)
+  writeLines(enc2utf8(txt), con, useBytes = TRUE)
   invisible(out_path)
 }
