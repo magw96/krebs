@@ -384,12 +384,23 @@ mod_biobank_server <- function(id, pool, user, prefill = NULL) {
           "UPDATE biobank_subjects SET consent_id = $1
             WHERE bio_subject_id = $2 AND consent_id IS NULL",
           params = list(new_id, bs$bio_subject_id))
-        shiny::showNotification("Consentimiento registrado.",
-                                type = "message", duration = 5)
+        shiny::showNotification(
+          sprintf("Consentimiento %s registrado para %s.",
+                  tmpl, bs$bio_subject_id),
+          type = "message", duration = 6)
+        # reset form fields so el siguiente registro empieza limpio
+        shiny::updateTextInput(session, "c_template",
+                               value = "ICF-Krebs-v1.0-2026")
+        shiny::updateDateInput(session, "c_signed_dt", value = Sys.Date())
+        shinyWidgets::updateAwesomeCheckbox(session, "c_genomics",
+                                            value = TRUE)
+        shinyWidgets::updateAwesomeCheckbox(session, "c_recontact",
+                                            value = FALSE)
+        shiny::updateTextAreaInput(session, "c_notes", value = "")
         bump()
       }, error = function(e) {
         shiny::showNotification(paste("Error:", conditionMessage(e)),
-                                type = "error", duration = 8)
+                                type = "error", duration = 10)
       })
     })
 
@@ -399,7 +410,7 @@ mod_biobank_server <- function(id, pool, user, prefill = NULL) {
       shiny::downloadButton(ns("icf_dl"),
         " Descargar machote ICF (DOCX)",
         icon = shiny::icon("file-word"),
-        class = "btn-outline-primary")
+        class = "btn-primary")
     })
 
     output$icf_dl <- shiny::downloadHandler(
@@ -411,7 +422,17 @@ mod_biobank_server <- function(id, pool, user, prefill = NULL) {
       },
       content = function(file) {
         p <- patient(); bs <- bio_subject()
-        biobank_icf_docx(file, patient = p, bio_subject = bs)
+        ok <- tryCatch({
+          biobank_icf_docx(file, patient = p, bio_subject = bs); TRUE
+        }, error = function(e) {
+          message("[biobank] icf_docx err: ", conditionMessage(e))
+          FALSE
+        })
+        if (!isTRUE(ok)) {
+          # ultimo recurso: escribimos un .txt para que el download nunca
+          # rompa con "Site wasn't available" en el navegador.
+          .biobank_icf_txt(file, patient = p, bio_subject = bs)
+        }
       }
     )
 
@@ -506,7 +527,7 @@ mod_biobank_server <- function(id, pool, user, prefill = NULL) {
         shiny::downloadButton(ns("label_pdf_dl"),
           sprintf(" Descargar etiqueta (%s)", l$first),
           icon = shiny::icon("print"),
-          class = "btn-outline-success")
+          class = "btn-success")
       )
     })
 

@@ -503,3 +503,53 @@ body:has(.krebs-login-card) .modal-backdrop { display: none !important; }
 body.krebs-pre-auth .modal-dialog,
 body:has(.krebs-login-card) .modal-dialog { margin-top: 12vh; }
 
+/* ---- Outline buttons: keep contrast on themed backgrounds ----------
+   Bootstrap defaults render outline buttons as transparent + colored
+   border. On our navy/info card headers the inner text becomes near-
+   invisible. Force a solid white fill + colored text/border so they
+   remain readable inside any panel. */
+.btn-outline-primary {
+  color: var(--krebs-primary) !important;
+  border-color: var(--krebs-primary) !important;
+  background-color: #fff !important;
+}
+.btn-outline-primary:hover, .btn-outline-primary:focus {
+  background-color: var(--krebs-primary) !important;
+  color: #fff !important;
+}
+.btn-outline-success {
+  color: var(--krebs-success) !important;
+  border-color: var(--krebs-success) !important;
+  background-color: #fff !important;
+}
+.btn-outline-success:hover, .btn-outline-success:focus {
+  background-color: var(--krebs-success) !important;
+  color: #fff !important;
+}
+.btn-outline-info {
+  color: var(--krebs-info) !important;
+  border-color: var(--krebs-info) !important;
+  background-color: #fff !important;
+}
+.btn-outline-info:hover, .btn-outline-info:focus {
+  background-color: var(--krebs-info) !important;
+  color: #fff !important;
+}
+
+/* ---- tabBox: keep active-tab text white on navy --------------------
+   bs4Dash::tabBox renders nav-link.active without an explicit color,
+   so the parent header turns navy but the tab labels stay near-black,
+   which is the "negros con fondo azul" effect the user reported. */
+.card .nav-tabs .nav-link.active,
+.card-header .nav-tabs .nav-link.active {
+  background-color: var(--krebs-primary-soft) !important;
+  color: #fff !important;
+  border-color: var(--krebs-primary-soft) !important;
+}
+.card .nav-tabs .nav-link {
+  color: #d8e1ee !important;
+}
+.card .nav-tabs .nav-link:hover {
+  color: #fff !important;
+}
+

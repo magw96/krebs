@@ -11,8 +11,17 @@
 #' @return out_path
 
 biobank_icf_docx <- function(out_path, patient = NULL, bio_subject = NULL) {
-  if (!requireNamespace("officer", quietly = TRUE))
-    stop("Instale 'officer' para generar el ICF: install.packages('officer')")
+  # Fallback robusto: si officer no esta disponible (ej. PCC sin la
+  # dependencia instalada todavia), generamos un .txt con el mismo
+  # contenido en lugar de fallar el download y dejar al navegador
+  # con "Site wasn't available".
+  if (!requireNamespace("officer", quietly = TRUE)) {
+    txt_path <- sub("\\.docx?$", ".txt", out_path)
+    if (txt_path == out_path) txt_path <- paste0(out_path, ".txt")
+    .biobank_icf_txt(txt_path, patient, bio_subject)
+    file.copy(txt_path, out_path, overwrite = TRUE)
+    return(invisible(out_path))
+  }
 
   pname  <- patient$nombre %||% "_______________________________"
   pmrn   <- patient$mrn    %||% "_______________"
@@ -138,5 +147,53 @@ biobank_icf_docx <- function(out_path, patient = NULL, bio_subject = NULL) {
     style = "Normal")
 
   print(doc, target = out_path)
+  invisible(out_path)
+}
+
+# ---- Fallback texto plano (si officer no esta instalado) -------------------
+.biobank_icf_txt <- function(out_path, patient = NULL, bio_subject = NULL) {
+  pname <- patient$nombre %||% "_______________________________"
+  pmrn  <- patient$mrn    %||% "_______________"
+  psex  <- patient$sexo   %||% "____"
+  page  <- if (!is.null(patient$edad) && !is.na(patient$edad))
+             sprintf("%d anos", as.integer(patient$edad))
+           else "____ anos"
+  pdx   <- patient$tipo_cancer %||% "_______________________________"
+  bsid  <- bio_subject$bio_subject_id %||% "(se asignara al firmar)"
+  hosp  <- bio_subject$hospital_code  %||% "____"
+  hoy   <- format(Sys.Date(), "%Y-%m-%d")
+
+  txt <- c(
+    "CONSENTIMIENTO INFORMADO - BIOBANCO ONCOLOGICO KREBS",
+    sprintf("Protocolo IRB: TDM-CEI-2026-V1   Hospital: %s   Version: ICF-Krebs-v1.0-2026", hosp),
+    "",
+    "1. Datos del participante",
+    sprintf("   Nombre: %s", pname),
+    sprintf("   MRN:    %s", pmrn),
+    sprintf("   Sexo:   %s   Edad: %s", psex, page),
+    sprintf("   Diagnostico: %s", pdx),
+    sprintf("   BIOID:  %s", bsid),
+    sprintf("   Fecha consulta: %s", hoy),
+    "",
+    "2. Naturaleza y proposito",
+    "   Donacion de muestras biologicas (tejido, sangre, ADN/ARN) al",
+    "   Biobanco Oncologico Krebs para investigacion biomedica.",
+    "",
+    "3. Alcance (marque)",
+    "   [ ] Investigacion oncologica general (broad)",
+    "   [ ] Estudios genomicos / secuenciacion masiva",
+    "   [ ] Re-contacto para estudios futuros",
+    "   [ ] Compartir muestras anonimizadas bajo MTA",
+    "",
+    "4. Firmas",
+    "   Participante: __________________________ Fecha: __________",
+    "   Testigo 1:    __________________________ Fecha: __________",
+    "   Testigo 2:    __________________________ Fecha: __________",
+    "   Investigador: __________________________ Fecha: __________",
+    "",
+    paste0("Generado por Krebs V0.2 el ", hoy,
+           " (fallback texto: 'officer' no instalado en el servidor).")
+  )
+  writeLines(txt, out_path, useBytes = TRUE)
   invisible(out_path)
 }
